@@ -1,6 +1,13 @@
 #+TITLE: immersive-translate: Immersive Bilingual Translation (WIP)
 * Overview
 This package is inspired by [[https://github.com/immersive-translate/immersive-translate][immersive-translate/immersive-translate]] .
+* Installation
+You must also install [[https://github.com/karthink/gptel][karthink/gptel]] .
+
+#+begin_src elisp
+  (add-to-list 'load-path "/path-to/emacs-immersive-translate/")
+  (require 'immersive-translate)
+#+end_src
 * Usage
 - =immersive-translate-buffer=
   
@@ -13,3 +20,4 @@ This package is inspired by [[https://github.com/immersive-translate/immersive-t
 - =immersive-translate-clear=
   
   Clear all translations.
+  
