@@ -1,6 +1,13 @@
 #+TITLE: immersive-translate: Immersive Bilingual Translation (WIP)
 * Overview
 This package is inspired by [[https://github.com/immersive-translate/immersive-translate][immersive-translate/immersive-translate]] .
+* Screenshots
+** elfeed
+[[images/screenshots/elfeed.png]]
+** nov
+[[images/screenshots/nov.png]]
+** info
+[[images/screenshots/info.png]]
 * Installation
 You must also install [[https://github.com/karthink/gptel][karthink/gptel]] .
 
