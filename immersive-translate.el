@@ -1,7 +1,7 @@
 ;;; immersive-translate.el --- translate current buffer immersively -*- lexical-binding: t; -*-
 
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
-;; Url: https://github.com/Elilif/.elemacs
+;; Url: https://github.com/Elilif/emacs-immersive-translate
 
 ;; Version: 0.1
 ;; Package-Requires: ((gptel))

@@ -1,0 +1,15 @@
+#+TITLE: immersive-translate: Immersive Bilingual Translation (WIP)
+* Overview
+This package is inspired by [[https://github.com/immersive-translate/immersive-translate][immersive-translate/immersive-translate]] .
+* Usage
+- =immersive-translate-buffer=
+  
+  Translate the current buffer.
+
+- =immersive-translate-paragraph=
+
+  Translate the current paragraph.
+
+- =immersive-translate-clear=
+  
+  Clear all translations.
