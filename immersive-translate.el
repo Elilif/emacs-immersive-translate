@@ -78,6 +78,7 @@ Predicate functions don't take any arguments."
 	  (replace-regexp-in-string " +" " "))))
 
 (defun immersive-translate--get-paragraph ()
+  "Return the paragraph at point."
   (cond
    ((eq major-mode 'Info-mode)
 	(immersive-translate--info-get-paragraph))
@@ -85,6 +86,7 @@ Predicate functions don't take any arguments."
 	(thing-at-point 'paragraph t))))
 
 (defun immersive-translate--info-transform-response (str marker)
+  "Format STR in `Info-mode'."
   (let* ((fill-column 70)
 		 (str (string-trim-right str "[-=]+"))
 		 (spaces (with-current-buffer (marker-buffer marker)
@@ -101,19 +103,37 @@ Predicate functions don't take any arguments."
 											 (point-min) (point-max)))
 	   "\n"))))
 
+(defun immersive-translate--get-fill-region-string (str)
+  "Format STR."
+  (with-temp-buffer
+	(insert "\n")
+	(insert str)
+	(insert "\n")
+	(fill-region-as-paragraph (point-min) (point-max))
+	(buffer-string)))
+
+(defun immersive-translate--nov-transform-response (str)
+  "Format STR in `elfeed-show-mode.'"
+  (let ((fill-column (or nov-text-width 120)))
+	(immersive-translate--get-fill-region-string str)))
+
+(defun immersive-translate--elfeed-transform-response (str)
+  "Format STR in `nov-mode'."
+  (let ((fill-column (or shr-width 110)))
+	(immersive-translate--get-fill-region-string str)))
+
 
 (defun immersive-translate--transform-response (content-str &optional marker)
   "Format CONTENT-STR."
-  (cond
-   ((eq major-mode 'Info-mode)
-	(immersive-translate--info-transform-response content-str marker))
-   (t
-	(with-temp-buffer
-	  (insert "\n")
-	  (insert content-str)
-	  (insert "\n")
-	  (fill-region-as-paragraph (point-min) (point-max))
-      (buffer-string)))))
+  (pcase major-mode
+	('Info-mode
+	 (immersive-translate--info-transform-response content-str marker))
+	('nov-mode
+	 (immersive-translate--nov-transform-response content-str))
+	('elveed-show-mode
+	 (immersive-translate--elfeed-transform-response))
+	(t
+	 (immersive-translate--get-fill-region-string str))))
 
 (defun immersive-translate-callback (response info)
   "Insert RESPONSE from ChatGPT into the current buffer.
