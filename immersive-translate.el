@@ -1,4 +1,4 @@
-;;; immersive-translate.el --- translate current buffer immersively -*- lexical-binding: t; -*-
+;;; immersive-translate.el --- translate the current buffer immersively -*- lexical-binding: t; -*-
 
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
 ;; Url: https://github.com/Elilif/emacs-immersive-translate
@@ -26,16 +26,36 @@
   :type 'string)
 
 (defun immersive-translate--elfeed-image-p ()
-  "Return non-nil if current paragraph is an image."
-  (string-match-p "^\\*$" (string-trim (thing-at-point 'paragraph t))))
+  "Return non-nil if the current paragraph is an image."
+  (when (eq major-mode 'elfeed-show-mode)
+	(string-match-p "^\\*$" (string-trim (thing-at-point 'paragraph t)))))
 
 (defun immersive-translate--info-code-block-p ()
-  "Return non-nil if current paragraph is an code block."
-  (string-match-p "^ \\{6,\\}" (thing-at-point 'paragraph t)))
+  "Return non-nil if the current paragraph is a code block."
+  (let ((current-line (thing-at-point 'line t)))
+	(when (and
+		   (eq major-mode 'Info-mode)
+		   (string-match "^\\( \\{5,\\}\\)" current-line))
+	  (let* ((current-indent (length (match-string 1 current-line)))
+			 (prev-line (save-excursion
+						  (forward-line -2)
+						  (thing-at-point 'line t)))
+			 (prev-indent (if (string-match "^ +" prev-line)
+							  (length (match-string 0 prev-line))
+							0))
+			 (prev-is-kb-desc? (string-prefix-p "‘" prev-line))
+			 (small-indent-change? (< (- current-indent prev-indent) 5)))
+		(or (not (or prev-is-kb-desc? small-indent-change?))
+			(string-match-p "^ +\(" current-line))))))
+
+(defun immersive-translate--info-menu-p ()
+  "Return non-nil if the current line is a menu."
+  (string-match-p "^\\*" (thing-at-point 'line t)))
 
 (defcustom immersive-translate-disable-predicates '(immersive-translate--elfeed-image-p
-													immersive-translate--info-code-block-p)
-  "Predicates, return t when current paragraph should not to be translated.
+													immersive-translate--info-code-block-p
+													immersive-translate--info-menu-p)
+  "Predicates, return t when the current paragraph should not to be translated.
 
 Predicate functions don't take any arguments."
   :group 'immersive-translate
@@ -46,10 +66,9 @@ Predicate functions don't take any arguments."
 				(end-of-paragraph-text)
 				(point)))
 		 (bop (save-excursion
-				(or (re-search-forward " -- .*$" eop 'noerror)
-					(progn
-					  (start-of-paragraph-text)
-					  (point)))))
+				(re-search-forward "\\(^ [^ ].*\n \\{5,\\}\\)\\|\\(^ *‘.*’$\\)"
+								   (line-end-position 2)
+								   'noerror)))
 		 (string (if bop
 					 (buffer-substring-no-properties bop eop)
 				   (buffer-substring-no-properties (point) eop))))
@@ -65,22 +84,29 @@ Predicate functions don't take any arguments."
    (t
 	(thing-at-point 'paragraph t))))
 
-(defun immersive-translate--info-transform-response (str)
-  (with-temp-buffer
-	(insert str)
-	(fill-region-as-paragraph (point-min) (point-max))
-	(concat
-	 "\n"
-	 (replace-regexp-in-string "^" "     " (buffer-string))
-	 "\n")))
+(defun immersive-translate--info-transform-response (str marker)
+  (let* ((fill-column 70)
+		 (str (string-trim-right str "[-=]+"))
+		 (spaces (with-current-buffer (marker-buffer marker)
+				   (save-excursion
+					 (goto-char marker)
+					 (re-search-backward "^\\( *\\)" (line-beginning-position))
+					 (match-string 1)))))
+	(with-temp-buffer
+	  (insert str)
+	  (fill-region-as-paragraph (point-min) (point-max))
+	  (concat
+	   "\n"
+	   (replace-regexp-in-string "^" spaces (buffer-substring-no-properties
+											 (point-min) (point-max)))
+	   "\n"))))
 
 
-(defun immersive-translate--transform-response (content-str)
+(defun immersive-translate--transform-response (content-str &optional marker)
   "Format CONTENT-STR."
   (cond
-   ;; TODO: format info translations.
-   ;; ((eq major-mode 'Info-mode)
-   ;; 	(immersive-translate--info-transform-response content-str))
+   ((eq major-mode 'Info-mode)
+	(immersive-translate--info-transform-response content-str marker))
    (t
 	(with-temp-buffer
 	  (insert "\n")
@@ -90,7 +116,7 @@ Predicate functions don't take any arguments."
       (buffer-string)))))
 
 (defun immersive-translate-callback (response info)
-  "Insert RESPONSE from ChatGPT into current buffer.
+  "Insert RESPONSE from ChatGPT into the current buffer.
 
 INFO is a plist containing information relevant to this buffer.
 See gptel--url-get-response for details."
@@ -100,17 +126,19 @@ See gptel--url-get-response for details."
 	(with-current-buffer origin-buffer
 	  (if response
 		  (progn
-			(setq response (immersive-translate--transform-response response))
+			(setq response (immersive-translate--transform-response response start-marker))
 			(save-excursion
 			  (with-current-buffer (marker-buffer start-marker)
 				(goto-char start-marker)
 				(let ((ov (make-overlay (point) (1+ (point)))))
-				  (overlay-put ov 'after-string response)))))
+				  (overlay-put ov
+							   'after-string
+							   response)))))
 		(message "ChatGPT response error: (%s) %s"
 				 status-str (plist-get info :error))))))
 
 (defun immersive-translate-disable-p ()
-  "Return non-nil if current paragraph should not to be translated.
+  "Return non-nil if the current paragraph should not to be translated.
 
 Nil otherwise."
   (cl-some (lambda (pred)
@@ -131,9 +159,11 @@ Nil otherwise."
 
 ;;;###autoload
 (defun immersive-translate-paragraph ()
-  "Translate current paragraph."
+  "Translate the current paragraph."
   (interactive)
   (save-excursion
+	(forward-paragraph -1)
+	(forward-line)
 	(unless (immersive-translate-disable-p)
 	  (when-let* ((content (immersive-translate--get-paragraph))
 				  (gptel--system-message immersive-translate-gptel-system-prompt)
