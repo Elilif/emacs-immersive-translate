@@ -61,6 +61,8 @@ Predicate functions don't take any arguments."
   :group 'immersive-translate
   :type '(repeat function))
 
+(defvar-local immersive-translate--translation-overlays nil)
+
 (defun immersive-translate--info-get-paragraph ()
   (let* ((eop (save-excursion
 				(end-of-paragraph-text)
@@ -153,7 +155,8 @@ See gptel--url-get-response for details."
 				(let ((ov (make-overlay (point) (1+ (point)))))
 				  (overlay-put ov
 							   'after-string
-							   response)))))
+							   response)
+				  (push ov immersive-translate--translation-overlays)))))
 		(message "ChatGPT response error: (%s) %s"
 				 status-str (plist-get info :error))))))
 
@@ -198,8 +201,9 @@ Nil otherwise."
 (defun immersive-translate-clear ()
   "Clear translations."
   (interactive)
-  ;; FIXME: This function will delete all overlays.
-  (remove-overlays))
+  (dolist (ov immersive-translate--translation-overlays)
+	(delete-overlay ov))
+  (setq immersive-translate--translation-overlays nil))
 
 (provide 'immersive-translate)
 ;;; immersive-translate.el ends here
