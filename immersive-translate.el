@@ -130,10 +130,10 @@ Predicate functions don't take any arguments."
 	 (immersive-translate--info-transform-response content-str marker))
 	('nov-mode
 	 (immersive-translate--nov-transform-response content-str))
-	('elveed-show-mode
-	 (immersive-translate--elfeed-transform-response))
+	('elfeed-show-mode
+	 (immersive-translate--elfeed-transform-response content-str))
 	(t
-	 (immersive-translate--get-fill-region-string str))))
+	 (immersive-translate--get-fill-region-string content-str))))
 
 (defun immersive-translate-callback (response info)
   "Insert RESPONSE from ChatGPT into the current buffer.
