@@ -116,12 +116,16 @@ Predicate functions don't take any arguments."
 
 (defun immersive-translate--nov-transform-response (str)
   "Format STR in `elfeed-show-mode.'"
-  (let ((fill-column (or nov-text-width 120)))
+  (let ((fill-column (or (and (boundp 'nov-text-width)
+							  nov-text-width)
+						 120)))
 	(immersive-translate--get-fill-region-string str)))
 
 (defun immersive-translate--elfeed-transform-response (str)
   "Format STR in `nov-mode'."
-  (let ((fill-column (or shr-width 110)))
+  (let ((fill-column (or (and (boundp 'shr-width)
+							  shr-width)
+						 110)))
 	(immersive-translate--get-fill-region-string str)))
 
 
@@ -134,7 +138,7 @@ Predicate functions don't take any arguments."
 	 (immersive-translate--nov-transform-response content-str))
 	('elfeed-show-mode
 	 (immersive-translate--elfeed-transform-response content-str))
-	(t
+	(_
 	 (immersive-translate--get-fill-region-string content-str))))
 
 (defun immersive-translate-callback (response info)
