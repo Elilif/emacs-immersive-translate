@@ -12,7 +12,8 @@
 (require 'gptel)
 
 (defgroup immersive-translate nil
-  "Immersive translation")
+  "Immersive translation"
+  :group 'applications)
 
 (defcustom immersive-translate-gptel-system-prompt "You are a professional translator."
   "System prompt used by ChatGPT."
