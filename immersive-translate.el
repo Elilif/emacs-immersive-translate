@@ -71,7 +71,17 @@
   (when (eq major-mode 'help-mode)
 	(string-match-p "^ *\(" (thing-at-point 'line t))))
 
-(defcustom immersive-translate-disable-predicates '(immersive-translate--elfeed-image-p
+(defun immersive-translate--translation-exist-p ()
+  "Return non-nil if the current paragraph has been translated."
+  (save-excursion
+	(end-of-paragraph-text)
+	(when-let ((overlays (overlays-in (point) (1+ (point)))))
+	  (cl-some (lambda (ov)
+				 (overlay-get ov 'after-string))
+			   overlays))))
+
+(defcustom immersive-translate-disable-predicates '(immersive-translate--translation-exist-p
+													immersive-translate--elfeed-image-p
 													immersive-translate--info-code-block-p
 													immersive-translate--info-menu-p
 													immersive-translate--helpful-not-doc-p
