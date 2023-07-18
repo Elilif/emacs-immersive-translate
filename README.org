@@ -8,6 +8,8 @@ This package is inspired by [[https://github.com/immersive-translate/immersive-t
 [[images/screenshots/nov.png]]
 ** info
 [[images/screenshots/info.png]]
+** helpful/help
+[[images/screenshots/help.png]]
 * Installation
 You must also install [[https://github.com/karthink/gptel][karthink/gptel]] .
 

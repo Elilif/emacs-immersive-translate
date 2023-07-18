@@ -52,9 +52,30 @@
   "Return non-nil if the current line is a menu."
   (string-match-p "^\\*" (thing-at-point 'line t)))
 
+(defun immersive-translate--helpful-not-doc-p ()
+  "Return non-nil if point is not in the doc section."
+  (when (eq major-mode 'helpful-mode)
+	(when-let ((doc-beg (save-excursion
+						  (goto-char (point-min))
+						  (re-search-forward "^Documentation$" nil 'noerror)
+						  (line-beginning-position)))
+			   (doc-end (save-excursion
+						  (goto-char (point-min))
+						  (re-search-forward "^References$" nil 'noerror)
+						  (line-beginning-position))))
+	  (or (< (point) doc-beg)
+		  (>= (point) doc-end)))))
+
+(defun immersive-translate--help-signature-p ()
+  "Return non-nil if the current paragraph is a signature."
+  (when (eq major-mode 'help-mode)
+	(string-match-p "^ *\(" (thing-at-point 'line t))))
+
 (defcustom immersive-translate-disable-predicates '(immersive-translate--elfeed-image-p
 													immersive-translate--info-code-block-p
-													immersive-translate--info-menu-p)
+													immersive-translate--info-menu-p
+													immersive-translate--helpful-not-doc-p
+													immersive-translate--help-signature-p)
   "Predicates, return t when the current paragraph should not to be translated.
 
 Predicate functions don't take any arguments."
@@ -79,13 +100,19 @@ Predicate functions don't take any arguments."
 	  (replace-regexp-in-string "\n" " ")
 	  (replace-regexp-in-string " +" " "))))
 
+(defun immersive-translate--helpful-get-paragraph ()
+  (let ((para (thing-at-point 'paragraph t)))
+	(string-trim-left para "\nDocumentation\n")))
+
 (defun immersive-translate--get-paragraph ()
   "Return the paragraph at point."
-  (cond
-   ((eq major-mode 'Info-mode)
-	(immersive-translate--info-get-paragraph))
-   (t
-	(thing-at-point 'paragraph t))))
+  (pcase major-mode
+	('Info-mode
+	 (immersive-translate--info-get-paragraph))
+	('helpful-mode
+	 (immersive-translate--helpful-get-paragraph))
+	(_
+	 (thing-at-point 'paragraph t))))
 
 (defun immersive-translate--info-transform-response (str marker)
   "Format STR in `Info-mode'."
@@ -128,6 +155,11 @@ Predicate functions don't take any arguments."
 						 110)))
 	(immersive-translate--get-fill-region-string str)))
 
+(defun immersive-translate--help-transform-response (str)
+  "Format STR in `nov-mode'."
+  (let ((fill-column 70))
+	(immersive-translate--get-fill-region-string str)))
+
 
 (defun immersive-translate--transform-response (content-str &optional marker)
   "Format CONTENT-STR."
@@ -138,6 +170,9 @@ Predicate functions don't take any arguments."
 	 (immersive-translate--nov-transform-response content-str))
 	('elfeed-show-mode
 	 (immersive-translate--elfeed-transform-response content-str))
+	((or 'helpful-mode
+		 'help-mode)
+	 (immersive-translate--help-transform-response content-str))
 	(_
 	 (immersive-translate--get-fill-region-string content-str))))
 
