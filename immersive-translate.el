@@ -15,6 +15,11 @@
   "Immersive translation"
   :group 'applications)
 
+(defcustom immersive-translate-auto-idle 0.5
+  "Perform translation the next time Emacs is idle for seconds."
+  :group 'immersive-translate
+  :type 'number)
+
 (defcustom immersive-translate-gptel-system-prompt "You are a professional translator."
   "System prompt used by ChatGPT."
   :group 'immersive-translate
@@ -77,7 +82,8 @@
 	(end-of-paragraph-text)
 	(when-let ((overlays (overlays-in (point) (1+ (point)))))
 	  (cl-some (lambda (ov)
-				 (overlay-get ov 'after-string))
+				 (or (overlay-get ov 'after-string)
+					 (overlay-get ov 'immersive-translate-pending)))
 			   overlays))))
 
 (defcustom immersive-translate-disable-predicates '(immersive-translate--translation-exist-p
@@ -93,6 +99,7 @@ Predicate functions don't take any arguments."
   :type '(repeat function))
 
 (defvar-local immersive-translate--translation-overlays nil)
+(defvar immersive-translate--timer nil)
 
 (defun immersive-translate--info-get-paragraph ()
   (let* ((eop (save-excursion
@@ -201,11 +208,16 @@ See gptel--url-get-response for details."
 			(save-excursion
 			  (with-current-buffer (marker-buffer start-marker)
 				(goto-char start-marker)
-				(let ((ov (make-overlay (point) (1+ (point)))))
-				  (overlay-put ov
+				(let ((ovs (overlays-in (point) (1+ (point))))
+					  (new-ov (make-overlay (point) (1+ (point)))))
+				  (mapc (lambda (ov)
+						  (when (overlay-get ov 'immersive-translate-pending)
+							(delete-overlay ov)))
+						ovs)
+				  (overlay-put new-ov
 							   'after-string
 							   response)
-				  (push ov immersive-translate--translation-overlays)))))
+				  (push new-ov immersive-translate--translation-overlays)))))
 		(message "ChatGPT response error: (%s) %s"
 				 status-str (plist-get info :error))))))
 
@@ -241,8 +253,13 @@ Nil otherwise."
 				  (gptel--system-message immersive-translate-gptel-system-prompt)
 				  (user-prompt (format
 								immersive-translate-gptel-user-prompt
-								content)))
+								content))
+				  (ov t))
 		(end-of-paragraph-text)
+		(setq ov (make-overlay (point) (1+ (point))))
+		(overlay-put ov
+					 'immersive-translate-pending
+					 t)
 		(gptel-request user-prompt
 					   :callback #'immersive-translate-callback)))))
 
@@ -250,9 +267,36 @@ Nil otherwise."
 (defun immersive-translate-clear ()
   "Clear translations."
   (interactive)
+  (let ((ovs (overlays-in (point-min) (point-max))))
+	(mapc (lambda (ov)
+			(when (overlay-get ov 'immersive-translate-pending)
+			  (delete-overlay ov)))
+		  ovs))
   (dolist (ov immersive-translate--translation-overlays)
 	(delete-overlay ov))
   (setq immersive-translate--translation-overlays nil))
+
+;;;###autoload
+(define-minor-mode immersive-translate-auto-mode
+  "Toggle immersive-translate-auto-mode.
+
+Translate paragraph under the cursor."
+  :global nil
+  :group 'immersive-translate
+  (cond
+   (immersive-translate-auto-mode
+	(when (and immersive-translate--timer (timerp immersive-translate--timer))
+      (cancel-timer immersive-translate--timer))
+	(setq immersive-translate--timer
+		  (run-with-idle-timer immersive-translate-auto-idle 'repeat #'immersive-translate--auto-translate)))
+   (t
+	(cancel-timer immersive-translate--timer)
+	(setq immersive-translate--timer nil))))
+
+(defun immersive-translate--auto-translate ()
+  (when (and immersive-translate-auto-mode
+			 (not (immersive-translate--translation-exist-p)))
+	(immersive-translate-paragraph)))
 
 (provide 'immersive-translate)
 ;;; immersive-translate.el ends here

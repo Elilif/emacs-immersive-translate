@@ -29,4 +29,8 @@ You must also install [[https://github.com/karthink/gptel][karthink/gptel]] .
 - =immersive-translate-clear=
   
   Clear all translations.
-  
+
+- =immersive-translate-auto-mode=
+
+  Translate the current paraghraph automatically after Emacs is idle for
+  =immersive-translate-auto-idle= seconds
