@@ -213,7 +213,7 @@ Nil otherwise."
   (interactive)
   (save-excursion
 	(goto-char (point-min))
-	(while (and (re-search-forward "^\\s-*$")
+	(while (and (re-search-forward "^\\s-*$" (point-max) 'noerror)
 				(not (eobp)))
 	  (forward-line)
 	  (immersive-translate-paragraph))))
