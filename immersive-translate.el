@@ -55,7 +55,8 @@
 
 (defun immersive-translate--info-menu-p ()
   "Return non-nil if the current line is a menu."
-  (string-match-p "^\\*" (thing-at-point 'line t)))
+  (when (eq major-mode 'Info-mode)
+	(string-match-p "^\\*" (thing-at-point 'line t))))
 
 (defun immersive-translate--helpful-not-doc-p ()
   "Return non-nil if point is not in the doc section."
