@@ -21,7 +21,26 @@
   :group 'immersive-translate
   :type 'number)
 
-(defcustom immersive-translate-shr-tag '(p li h1 h2 h3 h4 h5 h6)
+(defcustom immersive-translate-exclude-shr-tag '(html
+												 a
+												 base
+												 audio
+												 title
+												 img
+												 pre
+												 script
+												 style
+												 svg
+												 span
+												 sub
+												 sup
+												 br
+												 code
+												 tt
+												 hr
+												 ol
+												 em
+												 table)
   "HTML components that should be translated."
   :group 'immersive-translate
   :type '(repeat symbol))
@@ -113,7 +132,7 @@ Predicate functions don't take any arguments."
   (let* ((tag (dom-tag dom))
 		 (function
           (intern (concat "shr-tag-" (symbol-name tag)) obarray)))
-	(when (memq tag immersive-translate-shr-tag)
+	(unless (memq tag immersive-translate-exclude-shr-tag)
 	  (advice-add function :around #'immersive-translate--shr-set-bound))))
 
 (defun immersive-translate--info-get-paragraph ()
