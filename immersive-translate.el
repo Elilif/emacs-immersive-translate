@@ -44,7 +44,7 @@
 												 strong
 												 em
 												 table)
-  "HTML components that should be translated."
+  "HTML components that should not be translated."
   :group 'immersive-translate
   :type '(repeat symbol))
 
@@ -115,7 +115,7 @@
 													immersive-translate--info-menu-p
 													immersive-translate--helpful-not-doc-p
 													immersive-translate--help-signature-p)
-  "Predicates, return t when the current paragraph should not to be translated.
+  "Predicates, return t when the current paragraph should not be translated.
 
 Predicate functions don't take any arguments."
   :group 'immersive-translate
@@ -296,7 +296,7 @@ See gptel--url-get-response for details."
 				 status-str (plist-get info :error))))))
 
 (defun immersive-translate-disable-p ()
-  "Return non-nil if the current paragraph should not to be translated.
+  "Return non-nil if the current paragraph should not be translated.
 
 Nil otherwise."
   (cl-some (lambda (pred)
