@@ -41,6 +41,8 @@
 												 hr
 												 div
 												 ol
+												 ul
+												 dl
 												 strong
 												 em
 												 table)
