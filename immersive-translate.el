@@ -124,7 +124,8 @@ Predicate functions don't take any arguments."
 (defun immersive-translate--shr-set-bound (orig dom)
   (let ((beg (point)))
 	(funcall orig dom)
-	(when (< beg (point-max))
+	(when (and (< beg (point-max))
+			   (> (point) 2))
 	  (put-text-property beg (1+ beg) 'immersive-translate--beg t)
 	  (put-text-property (- (point) 2) (1- (point)) 'immersive-translate--end (dom-tag dom)))))
 
