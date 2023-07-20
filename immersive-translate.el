@@ -22,8 +22,9 @@
   :type 'number)
 
 (defcustom immersive-translate-exclude-shr-tag '(html
-												 a
 												 base
+												 body
+												 a
 												 audio
 												 title
 												 img
@@ -38,7 +39,9 @@
 												 code
 												 tt
 												 hr
+												 div
 												 ol
+												 strong
 												 em
 												 table)
   "HTML components that should be translated."
