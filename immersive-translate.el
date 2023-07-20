@@ -10,6 +10,7 @@
 
 ;; TODO: use my own translation functions.
 (require 'gptel)
+(require 'dom)
 
 (defgroup immersive-translate nil
   "Immersive translation"
@@ -20,6 +21,11 @@
   :group 'immersive-translate
   :type 'number)
 
+(defcustom immersive-translate-shr-tag '(p li h1 h2 h3 h4 h5 h6)
+  "HTML components that should be translated."
+  :group 'immersive-translate
+  :type '(repeat symbol))
+
 (defcustom immersive-translate-gptel-system-prompt "You are a professional translator."
   "System prompt used by ChatGPT."
   :group 'immersive-translate
@@ -29,11 +35,6 @@
   "User prompt used by ChatGPT."
   :group 'immersive-translate
   :type 'string)
-
-(defun immersive-translate--elfeed-image-p ()
-  "Return non-nil if the current paragraph is an image."
-  (when (eq major-mode 'elfeed-show-mode)
-	(string-match-p "^\\*$" (string-trim (thing-at-point 'paragraph t)))))
 
 (defun immersive-translate--info-code-block-p ()
   "Return non-nil if the current paragraph is a code block."
@@ -88,7 +89,6 @@
 			   overlays))))
 
 (defcustom immersive-translate-disable-predicates '(immersive-translate--translation-exist-p
-													immersive-translate--elfeed-image-p
 													immersive-translate--info-code-block-p
 													immersive-translate--info-menu-p
 													immersive-translate--helpful-not-doc-p
@@ -102,7 +102,24 @@ Predicate functions don't take any arguments."
 (defvar-local immersive-translate--translation-overlays nil)
 (defvar immersive-translate--timer nil)
 
+(defun immersive-translate--shr-set-bound (orig dom)
+  (let ((beg (point)))
+	(funcall orig dom)
+	(when (< beg (point-max))
+	  (put-text-property beg (1+ beg) 'immersive-translate--beg t)
+	  (put-text-property (- (point) 2) (1- (point)) 'immersive-translate--end (dom-tag dom)))))
+
+(defun immersive-translate--shr-tag-advice (dom)
+  (let* ((tag (dom-tag dom))
+		 (function
+          (intern (concat "shr-tag-" (symbol-name tag)) obarray)))
+	(when (memq tag immersive-translate-shr-tag)
+	  (advice-add function :around #'immersive-translate--shr-set-bound))))
+
 (defun immersive-translate--info-get-paragraph ()
+  "Return the paragraph at point."
+  (forward-paragraph -1)
+  (forward-line)
   (let* ((eop (save-excursion
 				(end-of-paragraph-text)
 				(point)))
@@ -119,8 +136,23 @@ Predicate functions don't take any arguments."
 	  (replace-regexp-in-string " +" " "))))
 
 (defun immersive-translate--helpful-get-paragraph ()
+  "Return the paragraph at point."
+  (forward-paragraph -1)
+  (forward-line)
   (let ((para (thing-at-point 'paragraph t)))
 	(string-trim-left para "\nDocumentation\n")))
+
+(defun immersive-translate--elfeed-get-paragraph ()
+  "Return the paragraph at point."
+  (save-excursion
+    (when-let* ((end-prop (text-property-search-forward 'immersive-translate--end))
+				(end-pos (prop-match-beginning end-prop))
+				(tag (prop-match-value end-prop))
+				(beg-prop (text-property-search-backward 'immersive-translate--beg))
+				(beg-pos (prop-match-beginning beg-prop)))
+	  (if (eq tag 'li)
+		  (buffer-substring-no-properties (+ beg-pos 2) end-pos)
+		(buffer-substring-no-properties beg-pos end-pos)))))
 
 (defun immersive-translate--get-paragraph ()
   "Return the paragraph at point."
@@ -129,6 +161,8 @@ Predicate functions don't take any arguments."
 	 (immersive-translate--info-get-paragraph))
 	('helpful-mode
 	 (immersive-translate--helpful-get-paragraph))
+	((or 'elfeed-show-mode 'nov-mode)
+	 (immersive-translate--elfeed-get-paragraph))
 	(_
 	 (thing-at-point 'paragraph t))))
 
@@ -160,24 +194,40 @@ Predicate functions don't take any arguments."
 	(buffer-string)))
 
 (defun immersive-translate--nov-transform-response (str)
-  "Format STR in `elfeed-show-mode.'"
+  "Format STR in `nov-mode.'"
   (let ((fill-column (or (and (boundp 'nov-text-width)
 							  nov-text-width)
 						 120)))
 	(immersive-translate--get-fill-region-string str)))
 
-(defun immersive-translate--elfeed-transform-response (str)
-  "Format STR in `nov-mode'."
+(defun immersive-translate--elfeed-transform-response (str marker)
+  "Format STR in `elfeed-mode'."
   (let ((fill-column (or (and (boundp 'shr-width)
 							  shr-width)
-						 110)))
-	(immersive-translate--get-fill-region-string str)))
+						 110))
+		(prefix-length 0))
+	(with-current-buffer (marker-buffer marker)
+	  (save-excursion
+		(goto-char marker)
+		(when (eq (get-text-property (point) 'immersive-translate--end) 'li)
+		  (text-property-search-backward 'immersive-translate--beg)
+		  (setq prefix-length (get-text-property (point) 'shr-prefix-length)))))
+	(with-temp-buffer
+	  (insert str)
+	  (fill-region-as-paragraph (point-min) (point-max))
+	  (concat
+	   "\n"
+	   (when (> prefix-length 0)
+		 "\n")
+	   (replace-regexp-in-string "^" (make-string prefix-length ? )
+								 (buffer-substring-no-properties
+								  (point-min) (point-max)))
+	   "\n"))))
 
 (defun immersive-translate--help-transform-response (str)
-  "Format STR in `nov-mode'."
+  "Format STR in `help-mode'."
   (let ((fill-column 70))
 	(immersive-translate--get-fill-region-string str)))
-
 
 (defun immersive-translate--transform-response (content-str &optional marker)
   "Format CONTENT-STR."
@@ -187,7 +237,7 @@ Predicate functions don't take any arguments."
 	('nov-mode
 	 (immersive-translate--nov-transform-response content-str))
 	('elfeed-show-mode
-	 (immersive-translate--elfeed-transform-response content-str))
+	 (immersive-translate--elfeed-transform-response content-str marker))
 	((or 'helpful-mode
 		 'help-mode)
 	 (immersive-translate--help-transform-response content-str))
@@ -230,25 +280,35 @@ Nil otherwise."
 			 (funcall pred))
 		   immersive-translate-disable-predicates))
 
+(defun immersive-translate-end-of-paragraph ()
+  "Move to the end of the current paragraph."
+  (pcase major-mode
+	((or 'elfeed-show-mode 'nov-mode)
+	 (text-property-search-forward 'immersive-translate--end)
+	 (backward-char))
+	(_ (end-of-paragraph-text))))
+
 ;;;###autoload
 (defun immersive-translate-buffer ()
   "Translate the whole buffer."
   (interactive)
   (save-excursion
 	(goto-char (point-min))
-	(while (and (re-search-forward "^\\s-*$" (point-max) 'noerror)
-				(not (eobp)))
-	  (forward-line)
-	  (immersive-translate-paragraph))))
-
+	(pcase major-mode
+	  ((or 'elfeed-show-mode 'nov-mode)
+	   (immersive-translate-paragraph)
+	   (while (text-property-search-forward 'immersive-translate--end)
+		 (immersive-translate-paragraph)))
+	  (_ (while (and (re-search-forward "^\\s-*$" (point-max) 'noerror)
+					 (not (eobp)))
+		   (forward-line)
+		   (immersive-translate-paragraph))))))
 
 ;;;###autoload
 (defun immersive-translate-paragraph ()
   "Translate the current paragraph."
   (interactive)
   (save-excursion
-	(forward-paragraph -1)
-	(forward-line)
 	(unless (immersive-translate-disable-p)
 	  (when-let* ((content (immersive-translate--get-paragraph))
 				  (gptel--system-message immersive-translate-gptel-system-prompt)
@@ -256,7 +316,7 @@ Nil otherwise."
 								immersive-translate-gptel-user-prompt
 								content))
 				  (ov t))
-		(end-of-paragraph-text)
+		(immersive-translate-end-of-paragraph)
 		(setq ov (make-overlay (point) (1+ (point))))
 		(overlay-put ov
 					 'immersive-translate-pending
@@ -281,7 +341,8 @@ Nil otherwise."
 (define-minor-mode immersive-translate-auto-mode
   "Toggle immersive-translate-auto-mode.
 
-Translate paragraph under the cursor."
+Translate paragraph under the cursor after Emacs is idle for
+`immersive-translate-auto-idle' seconds."
   :global nil
   :group 'immersive-translate
   (cond
@@ -298,6 +359,10 @@ Translate paragraph under the cursor."
   (when (and immersive-translate-auto-mode
 			 (not (immersive-translate--translation-exist-p)))
 	(immersive-translate-paragraph)))
+
+;;;###autoload
+(defun immersive-translate-setup ()
+  (advice-add 'shr-descend :before #'immersive-translate--shr-tag-advice))
 
 (provide 'immersive-translate)
 ;;; immersive-translate.el ends here
