@@ -85,6 +85,16 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
               collect (format "-H%s: %s" key val))
      (list url))))
 
+(defun immersive-translate-curl-baidu-get-translation (response)
+  "Get the translated text return by BAIDU."
+  (map-nested-elt response '(:trans_result 0 :dst)))
+
+(add-to-list 'immersive-translate-curl-get-translation-alist
+			 '(baidu . immersive-translate-curl-baidu-get-translation))
+
+(add-to-list 'immersive-translate-curl-get-args-alist
+			 '(baidu . immersive-translate-baidu-get-args))
+
 (defun immersive-translate-baidu-translate (info &optional callback)
   (immersive-translate-curl-do 'baidu info callback))
 

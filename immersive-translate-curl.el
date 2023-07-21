@@ -41,9 +41,7 @@
 (defvar immersive-translate--process-alist)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 
-(defcustom immersive-translate-curl-get-translation-alist
-  '((chatgpt . immersive-translate-curl-chatgpt-get-translation)
-	(baidu . immersive-translate-curl-baidu-get-translation))
+(defcustom immersive-translate-curl-get-translation-alist '()
   "Alist of functions to get the translated text.
 
 Each element looks like (SERVICE . FUNCTION);
@@ -55,9 +53,7 @@ argument, called with RESPONSE (a JSON object) returned in
   :group 'immersive-translate
   :type '(alist :key-type symbol :value-type function))
 
-(defcustom immersive-translate-get-args-alist
-  '((chatgpt . immersive-translate-chatgpt-get-args)
-	(baidu . immersive-translate-baidu-get-args))
+(defcustom immersive-translate-curl-get-args-alist '()
   "Alist of functions to produce list of arguments for calling Curl. .
 
 Each element looks like (SERVICE . FUNCTION);
@@ -68,14 +64,6 @@ arguments, called with CONTENT and TOKEN.
 CONTENT is the data to send, TOKEN is a unique identifier."
   :group 'immersive-translate
   :type '(alist :key-type symbol :value-type function))
-
-(defun immersive-translate-curl-chatgpt-get-translation (response)
-  "Get the translated text return by CHATGPT."
-  (map-nested-elt response '(:choices 0 :message :content)))
-
-(defun immersive-translate-curl-baidu-get-translation (response)
-  "Get the translated text return by BAIDU."
-  (map-nested-elt response '(:trans_result 0 :dst)))
 
 (defun immersive-translate-curl--parse-response (buf token service)
   "Parse the buffer BUF with curl's response.
@@ -164,7 +152,7 @@ the response is inserted into the current buffer after point."
   (let* ((token (md5 (format "%s%s%s%s"
                              (random) (emacs-pid) (user-full-name)
                              (recent-keys))))
-		 (func (alist-get service immersive-translate-get-args-alist))
+		 (func (alist-get service immersive-translate-curl-get-args-alist))
          (args (funcall func (plist-get info :content) token))
          (process (apply #'start-process "immersive-translate-curl"
                          (generate-new-buffer "*immersive-translate-curl*") "curl" args)))

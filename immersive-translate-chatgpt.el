@@ -126,6 +126,16 @@ CONTENT is the text to be translated."
 	`((:role "system" :content ,immersive-translate-chatgpt-system-prompt)
 	  (:role "user"   :content ,user-prompt))))
 
+(defun immersive-translate-curl-chatgpt-get-translation (response)
+  "Get the translated text return by CHATGPT."
+  (map-nested-elt response '(:choices 0 :message :content)))
+
+(add-to-list 'immersive-translate-curl-get-translation-alist
+			 '(chatgpt . immersive-translate-curl-chatgpt-get-translation))
+
+(add-to-list 'immersive-translate-curl-get-args-alist
+			 '(chatgpt . immersive-translate-chatgpt-get-args))
+
 (defun immersive-translate-chatgpt-translate (info &optional callback)
   (immersive-translate-curl-do 'chatgpt info callback))
 
