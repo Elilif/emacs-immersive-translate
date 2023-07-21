@@ -38,6 +38,7 @@
 (require 'map)
 (require 'json)
 
+(defvar immersive-translate--process-alist)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 
 (defcustom immersive-translate-curl-get-translation-alist
