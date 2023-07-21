@@ -11,11 +11,15 @@
 (defvar immersive-translate--process-alist)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 
+(defgroup immersive-translate-trans nil
+  "Immersive translate translate-shell backend."
+  :group 'immersive-translate)
+
 (defcustom immersive-translate-trans-engine "google"
   "Translation engine used by trans.
 
 See https://github.com/soimort/translate-shell for more details."
-  :group 'immersive-translate
+  :group 'immersive-translate-trans
   :type 'string)
 
 (defcustom immersive-translate-trans-source-language "en"
@@ -23,7 +27,7 @@ See https://github.com/soimort/translate-shell for more details."
 
 See https://github.com/soimort/translate-shell#code-list for more
 details."
-  :group 'immersive-translate
+  :group 'immersive-translate-trans
   :type 'string)
 
 (defcustom immersive-translate-trans-target-language "zh-CN"
@@ -31,14 +35,14 @@ details."
 
 See https://github.com/soimort/translate-shell#code-list for more
 details."
-  :group 'immersive-translate
+  :group 'immersive-translate-trans
   :type 'string)
 
 (defcustom immersive-translate-trans-default-args "-show-original n -show-original-phonetics n -show-translation y -no-ansi -show-translation-phonetics n -show-prompt-message n -show-languages n -show-original-dictionary n -show-dictionary n -show-alternatives n"
   "Options passed to trans.
 
 See https://github.com/soimort/translate-shell for more details."
-  :group 'immersive-translate
+  :group 'immersive-translate-trans
   :type 'string)
 
 (defun immersive-translate-trans-make-command (text)

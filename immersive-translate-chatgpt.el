@@ -36,9 +36,13 @@
 
 (declare-function immersive-translate-api-key "ext:immersive-translate")
 
+(defgroup immersive-translate-chatgpt nil
+  "Immersive translate chatgpt backend."
+  :group 'immersive-translate)
+
 (defcustom immersive-translate-chatgpt-host "api.openai.com"
   "The OpenAI API host queried by immersive-translate."
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type 'string)
 
 (defcustom immersive-translate-chatgpt-model "gpt-3.5-turbo-0613"
@@ -49,7 +53,7 @@ The current options are
 - \"gpt-3.5-turbo-16k\"
 - \"gpt-4\" (experimental)
 - \"gpt-4-32k\" (experimental)"
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type '(choice
           (const :tag "GPT 3.5 turbo" "gpt-3.5-turbo")
           (const :tag "GPT 3.5 turbo 16k" "gpt-3.5-turbo-16k")
@@ -61,24 +65,24 @@ The current options are
 
 This is a number between 0.0 and 2.0 that controls the randomness
 of the response, with 2.0 being the most random."
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type 'number)
 
 (defcustom immersive-translate-chatgpt-proxy ""
   "Path to a proxy to use for ChatGPT query.
 Passed to curl via --proxy arg, for example \"proxy.yourorg.com:80\"
 Leave it empty if you don't use a proxy."
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type 'string)
 
 (defcustom immersive-translate-chatgpt-system-prompt "You are a professional translator."
   "System prompt used by ChatGPT."
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type 'string)
 
 (defcustom immersive-translate-chatgpt-user-prompt "You will be provided with text delimited by triple backticks, your task is to translate the wrapped text into Chinese. You should only output the translated text. \n```%s```"
   "User prompt used by ChatGPT."
-  :group 'immersive-translate
+  :group 'immersive-translate-chatgpt
   :type 'string)
 
 (defun immersive-translate-chatgpt--request-data (prompts)

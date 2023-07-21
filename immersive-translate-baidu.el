@@ -13,25 +13,29 @@
 (declare-function immersive-translate-api-key "ext:immersive-translate")
 (declare-function immersive-translate-clear "ext:immersive-translate")
 
+(defgroup immersive-translate-baidu nil
+  "Immersive translate baidu backend."
+  :group 'immersive-translate)
+
 (defcustom immersive-translate-baidu-source-language "en"
   "The source language
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
-  :group 'immersive-translate
+  :group 'immersive-translate-baidu
   :type 'string)
 
 (defcustom immersive-translate-baidu-target-language "zh"
   "The target language
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
-  :group 'immersive-translate
+  :group 'immersive-translate-baidu
   :type 'string)
 
 (defcustom immersive-translate-baidu-appid ""
   "The appid used by Baidu Trasnlate API.
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
-  :group 'immersive-translate
+  :group 'immersive-translate-baidu
   :type 'string)
 
 (defvar immersive-translate-baidu-salt  (number-to-string (random 10000)))

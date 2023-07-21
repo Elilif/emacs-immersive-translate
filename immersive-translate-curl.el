@@ -41,6 +41,10 @@
 (defvar immersive-translate--process-alist)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 
+(defgroup immersive-translate-curl nil
+  "Immersive translate curl lib."
+  :group 'immersive-translate)
+
 (defcustom immersive-translate-curl-get-translation-alist '()
   "Alist of functions to get the translated text.
 
@@ -50,7 +54,7 @@ SERVICE is the translation service, see
 `immersive-translate-service'; FUNCTION is a function of one
 argument, called with RESPONSE (a JSON object) returned in
 `immersive-translate-curl--parse-response'."
-  :group 'immersive-translate
+  :group 'immersive-translate-curl
   :type '(alist :key-type symbol :value-type function))
 
 (defcustom immersive-translate-curl-get-args-alist '()
@@ -62,7 +66,7 @@ SERVICE is the translation service; FUNCTION is a function of two
 arguments, called with CONTENT and TOKEN.
 
 CONTENT is the data to send, TOKEN is a unique identifier."
-  :group 'immersive-translate
+  :group 'immersive-translate-curl
   :type '(alist :key-type symbol :value-type function))
 
 (defun immersive-translate-curl--parse-response (buf token service)
