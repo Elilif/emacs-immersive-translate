@@ -58,6 +58,16 @@ argument."
   :group 'immersive-translate
   :type '(alist :key-type symbol :value-type function))
 
+(defcustom immersive-translate-pending-message "🔄"
+  "Text displayed before the translation results are returned."
+  :group 'immersive-translate
+  :type 'string)
+
+(defcustom immersive-translate-failed-message "🔀"
+  "Text displayed when translation fails."
+  :group 'immersive-translate
+  :type 'string)
+
 (defcustom immersive-translate-exclude-shr-tag '(html
 												 base
 												 body
@@ -140,8 +150,7 @@ argument."
 	   (end-of-paragraph-text)))
 	(when-let ((overlays (overlays-in (point) (1+ (point)))))
 	  (cl-some (lambda (ov)
-				 (or (overlay-get ov 'after-string)
-					 (overlay-get ov 'immersive-translate-pending)))
+				 (overlay-get ov 'after-string))
 			   overlays))))
 
 (defcustom immersive-translate-disable-predicates '(immersive-translate--translation-exist-p
@@ -335,7 +344,7 @@ INFO is a plist containing information relevant to this buffer."
 				(let ((ovs (overlays-in (point) (1+ (point))))
 					  (new-ov (make-overlay (point) (1+ (point)))))
 				  (mapc (lambda (ov)
-						  (when (overlay-get ov 'immersive-translate-pending)
+						  (when (overlay-get ov 'after-string)
 							(delete-overlay ov)))
 						ovs)
 				  (overlay-put new-ov
@@ -488,8 +497,8 @@ the value of (point) is recorded."
 		(immersive-translate-end-of-paragraph)
 		(setq ov (make-overlay (point) (1+ (point))))
 		(overlay-put ov
-					 'immersive-translate-pending
-					 t)
+					 'after-string
+					 "🔄")
 		(immersive-translate-do-translate content)))))
 
 ;;;###autoload
@@ -498,7 +507,7 @@ the value of (point) is recorded."
   (interactive)
   (let ((ovs (overlays-in (point-min) (point-max))))
 	(mapc (lambda (ov)
-			(when (overlay-get ov 'immersive-translate-pending)
+			(when (overlay-get ov 'after-string)
 			  (delete-overlay ov)))
 		  ovs))
   (dolist (ov immersive-translate--translation-overlays)

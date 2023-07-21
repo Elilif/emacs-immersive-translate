@@ -39,6 +39,7 @@
 (require 'json)
 
 (defvar immersive-translate--process-alist)
+(defvar immersive-translate-failed-message)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 
 (defgroup immersive-translate-curl nil
@@ -133,7 +134,7 @@ PROCESS and _STATUS are process parameters."
         (when error (plist-put proc-info :error error))
 		(when (and (plist-get proc-info :retry)
 				   (string-empty-p response))
-		  (setq response "No response."))
+		  (setq response immersive-translate-failed-message))
 		(when (and proc-content
 				   (string-empty-p response)
 				   (not (plist-get proc-info :retry)))
