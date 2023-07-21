@@ -1,16 +1,23 @@
 ;;; immersive-translate.el --- translate the current buffer immersively -*- lexical-binding: t; -*-
 
+;; Copyright (C) 2023  Eli Qian
+
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
 ;; Url: https://github.com/Elilif/emacs-immersive-translate
 
-;; Version: 0.1
-;; Package-Requires: ((gptel))
-;; Keywords: translation, gptel
+;; Version: v0.2.0
+;; Keywords: translation
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
-;; TODO: use my own translation functions.
-(require 'gptel)
+;;; Commentary:
+
+
+;;; Code:
+
+(require 'immersive-translate-curl)
 (require 'dom)
+(require 'auth-source)
+(require 'text-property-search)
 
 (defgroup immersive-translate nil
   "Immersive translation"
@@ -20,6 +27,17 @@
   "Perform translation the next time Emacs is idle for seconds."
   :group 'immersive-translate
   :type 'number)
+
+(defcustom immersive-translate-service 'baidu
+  "The translation service to use.
+
+The current options are
+- chatgpt
+- baidu"
+  :group 'immersive-translate
+  :type '(choice
+          (const :tag "ChatGPT" chatgpt)
+          (const :tag "Baidu" baidu)))
 
 (defcustom immersive-translate-exclude-shr-tag '(html
 												 base
@@ -49,16 +67,6 @@
   "HTML components that should not be translated."
   :group 'immersive-translate
   :type '(repeat symbol))
-
-(defcustom immersive-translate-gptel-system-prompt "You are a professional translator."
-  "System prompt used by ChatGPT."
-  :group 'immersive-translate
-  :type 'string)
-
-(defcustom immersive-translate-gptel-user-prompt "You will be provided with text delimited by triple backticks, your task is to translate the wrapped text into Chinese. You should only output the translated text. \n```%s```"
-  "User prompt used by ChatGPT."
-  :group 'immersive-translate
-  :type 'string)
 
 (defun immersive-translate--info-code-block-p ()
   "Return non-nil if the current paragraph is a code block."
@@ -105,7 +113,12 @@
 (defun immersive-translate--translation-exist-p ()
   "Return non-nil if the current paragraph has been translated."
   (save-excursion
-	(end-of-paragraph-text)
+	(pcase major-mode
+	  ((or 'elfeed-show-mode 'nov-mode)
+	   (text-property-search-forward 'immersive-translate--end)
+	   (backward-char))
+	  (_
+	   (end-of-paragraph-text)))
 	(when-let ((overlays (overlays-in (point) (1+ (point)))))
 	  (cl-some (lambda (ov)
 				 (or (overlay-get ov 'after-string)
@@ -125,13 +138,27 @@ Predicate functions don't take any arguments."
 
 (defvar-local immersive-translate--translation-overlays nil)
 (defvar immersive-translate--timer nil)
+(defvar-local immersive-translate--window-start nil)
+(defvar-local immersive-translate--window-end nil)
+
+(defun immersive-translate-api-key (host user)
+  "Lookup api key in the auth source."
+  (if-let ((secret (plist-get (car (auth-source-search
+                                    :host host
+                                    :user user
+                                    :require '(:secret)))
+                              :secret)))
+      (if (functionp secret)
+          (encode-coding-string (funcall secret) 'utf-8)
+        secret)
+    (user-error (format "No %s found in the auth source" user))))
 
 (defun immersive-translate--shr-set-bound (orig dom)
   (let ((beg (point)))
 	(funcall orig dom)
 	(when (and (< beg (point-max))
 			   (> (point) 2))
-	  (put-text-property beg (1+ beg) 'immersive-translate--beg t)
+	  (put-text-property beg (1+ beg) 'immersive-translate--beg (dom-tag dom))
 	  (put-text-property (- (point) 2) (1- (point)) 'immersive-translate--end (dom-tag dom)))))
 
 (defun immersive-translate--shr-tag-advice (dom)
@@ -272,11 +299,11 @@ Predicate functions don't take any arguments."
 (defun immersive-translate-callback (response info)
   "Insert RESPONSE from ChatGPT into the current buffer.
 
-INFO is a plist containing information relevant to this buffer.
-See gptel--url-get-response for details."
-  (let* ((status-str  (plist-get info :status))
-         (origin-buffer (plist-get info :buffer))
-         (start-marker (plist-get info :position)))
+INFO is a plist containing information relevant to this buffer."
+  (when-let* (((not (string-empty-p response)))
+			  (status-str  (plist-get info :status))
+			  (origin-buffer (plist-get info :buffer))
+			  (start-marker (plist-get info :position)))
 	(with-current-buffer origin-buffer
 	  (if response
 		  (progn
@@ -313,21 +340,31 @@ Nil otherwise."
 	 (backward-char))
 	(_ (end-of-paragraph-text))))
 
+(defun immersive-translate-join-lin (paragraph)
+  (when paragraph
+	(string-clean-whitespace
+	 (replace-regexp-in-string "\n" " " paragraph))))
+
+(defun immersive-translate-region (start end)
+  "Translate the text between START and END."
+  (save-excursion
+	(goto-char start)
+	(pcase major-mode
+	  ((or 'elfeed-show-mode 'nov-mode)
+	   (immersive-translate-paragraph)
+	   (while (and (text-property-search-forward 'immersive-translate--end)
+				   (< (point) end))
+		 (immersive-translate-paragraph)))
+	  (_ (while (and (re-search-forward "^\\s-*$" end 'noerror)
+					 (not (eobp)))
+		   (forward-line)
+		   (immersive-translate-paragraph))))))
+
 ;;;###autoload
 (defun immersive-translate-buffer ()
   "Translate the whole buffer."
   (interactive)
-  (save-excursion
-	(goto-char (point-min))
-	(pcase major-mode
-	  ((or 'elfeed-show-mode 'nov-mode)
-	   (immersive-translate-paragraph)
-	   (while (text-property-search-forward 'immersive-translate--end)
-		 (immersive-translate-paragraph)))
-	  (_ (while (and (re-search-forward "^\\s-*$" (point-max) 'noerror)
-					 (not (eobp)))
-		   (forward-line)
-		   (immersive-translate-paragraph))))))
+  (immersive-translate-region (point-min) (point-max)))
 
 ;;;###autoload
 (defun immersive-translate-paragraph ()
@@ -335,19 +372,18 @@ Nil otherwise."
   (interactive)
   (save-excursion
 	(unless (immersive-translate-disable-p)
-	  (when-let* ((content (immersive-translate--get-paragraph))
-				  (gptel--system-message immersive-translate-gptel-system-prompt)
-				  (user-prompt (format
-								immersive-translate-gptel-user-prompt
-								content))
+	  (when-let* ((paragraph (immersive-translate-join-lin
+							  (immersive-translate--get-paragraph)))
+				  (content (if (eq immersive-translate-service 'chatgpt)
+							   (immersive-translate-chatgpt-create-prompt paragraph)
+							 paragraph))
 				  (ov t))
 		(immersive-translate-end-of-paragraph)
 		(setq ov (make-overlay (point) (1+ (point))))
 		(overlay-put ov
 					 'immersive-translate-pending
 					 t)
-		(gptel-request user-prompt
-					   :callback #'immersive-translate-callback)))))
+		(immersive-translate-curl-do content)))))
 
 ;;;###autoload
 (defun immersive-translate-clear ()
@@ -362,6 +398,13 @@ Nil otherwise."
 	(delete-overlay ov))
   (setq immersive-translate--translation-overlays nil))
 
+(defun immersive-translate--auto-translate-window ()
+  (let ((start (window-start))
+		(end (window-end)))
+	(setq immersive-translate--window-start start
+		  immersive-translate--window-end end)
+	(immersive-translate-region start end)))
+
 ;;;###autoload
 (define-minor-mode immersive-translate-auto-mode
   "Toggle immersive-translate-auto-mode.
@@ -374,6 +417,7 @@ Translate paragraph under the cursor after Emacs is idle for
    (immersive-translate-auto-mode
 	(when (and immersive-translate--timer (timerp immersive-translate--timer))
       (cancel-timer immersive-translate--timer))
+	(immersive-translate--auto-translate-window)
 	(setq immersive-translate--timer
 		  (run-with-idle-timer immersive-translate-auto-idle 'repeat #'immersive-translate--auto-translate)))
    (t
@@ -382,8 +426,10 @@ Translate paragraph under the cursor after Emacs is idle for
 
 (defun immersive-translate--auto-translate ()
   (when (and immersive-translate-auto-mode
-			 (not (immersive-translate--translation-exist-p)))
-	(immersive-translate-paragraph)))
+			 immersive-translate--window-end
+			 (or (< (window-start) immersive-translate--window-start)
+				 (> (window-end) immersive-translate--window-end)))
+	(immersive-translate--auto-translate-window)))
 
 ;;;###autoload
 (defun immersive-translate-setup ()

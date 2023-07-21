@@ -1,0 +1,5 @@
+#+title: Emacs-immersive-translate changelog
+* v0.2.0 (2023-07-21)
+** New feature: enable multiple translation services
+Now users can select different translation services by setting =immersive-translate-service=.
+** New feature: add =immersive-translate-auto-mode=
