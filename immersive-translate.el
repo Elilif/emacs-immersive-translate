@@ -14,10 +14,13 @@
 
 ;;; Code:
 
-(require 'immersive-translate-curl)
 (require 'dom)
 (require 'auth-source)
 (require 'text-property-search)
+(require 'immersive-translate-baidu)
+(require 'immersive-translate-chatgpt)
+(require 'immersive-translate-trans)
+
 
 (defgroup immersive-translate nil
   "Immersive translation"
@@ -28,16 +31,32 @@
   :group 'immersive-translate
   :type 'number)
 
-(defcustom immersive-translate-service 'baidu
-  "The translation service to use.
+(defcustom immersive-translate-backend 'baidu
+  "The translation backend to use.
 
 The current options are
 - chatgpt
-- baidu"
+- baidu
+- trans"
   :group 'immersive-translate
   :type '(choice
           (const :tag "ChatGPT" chatgpt)
-          (const :tag "Baidu" baidu)))
+          (const :tag "Baidu" baidu)
+		  (const :tag "translate-shell" trans)))
+
+(defcustom immersive-translate-backend-alist
+  '((baidu . immersive-translate-baidu-translate)
+	(chatgpt . immersive-translate-chatgpt-translate)
+	(trans . immersive-translate-trans-translate))
+  "Alist of functions to do the translation job.
+
+Each element looks like (BACKEND . FUNCTION);
+
+BACKEND is the translation backend, see
+`immersive-translate-backend'; FUNCTION is a function of two
+argument."
+  :group 'immersive-translate
+  :type '(alist :key-type symbol :value-type function))
 
 (defcustom immersive-translate-exclude-shr-tag '(html
 												 base
@@ -136,6 +155,8 @@ Predicate functions don't take any arguments."
   :group 'immersive-translate
   :type '(repeat function))
 
+(defvar immersive-translate--process-alist nil
+  "Alist of active immersive-translate curl requests.")
 (defvar-local immersive-translate--translation-overlays nil)
 (defvar immersive-translate--timer nil)
 (defvar-local immersive-translate--window-start nil)
@@ -321,7 +342,7 @@ INFO is a plist containing information relevant to this buffer."
 							   'after-string
 							   response)
 				  (push new-ov immersive-translate--translation-overlays)))))
-		(message "ChatGPT response error: (%s) %s"
+		(message "Response error: (%s) %s"
 				 status-str (plist-get info :error))))))
 
 (defun immersive-translate-disable-p ()
@@ -361,6 +382,92 @@ Nil otherwise."
 		   (immersive-translate-paragraph))))))
 
 ;;;###autoload
+(defun immersive-translate-abort (buf)
+  "Stop all active immersive-translate processes associated with
+ the current buffer."
+  (interactive (list (current-buffer)))
+  (if-let* ((proc-attrs
+             (cl-remove-if-not
+              (lambda (proc-list)
+				(eq (plist-get (cdr proc-list) :buffer) buf))
+              immersive-translate--process-alist)))
+      (dolist (proc-attr proc-attrs)
+		(let ((proc (car proc-attr)))
+		  (setf (alist-get proc immersive-translate--process-alist nil 'remove) nil)
+		  (set-process-sentinel proc #'ignore)
+		  (delete-process proc)
+		  (kill-buffer (process-buffer proc))
+		  (message "Stopped all immersive-translate processes in buffer %S" (buffer-name buf))))
+    (message "No immersive-translate process associated with buffer %S" (buffer-name buf))))
+
+(cl-defun immersive-translate-do-translate
+    (&optional content &key callback
+               (buffer (current-buffer))
+               position
+			   (backend immersive-translate-backend))
+  "Request a response from `immersive-translate-backend' for CONTENT.
+
+If PROMPT is
+- a string, it is used as is
+- A list of plists, it is used to create a full prompt suitable for
+  sending to ChatGPT.
+
+Keyword arguments:
+
+CALLBACK, if supplied, is a function of two arguments, called
+with the RESPONSE (a string) and INFO (a plist):
+
+(callback RESPONSE INFO)
+
+RESPONSE is nil if there was no response or an error.
+
+The INFO plist has (at least) the following keys:
+:content       - The content that was sent with the request
+:buffer       - The buffer current when the request was sent.
+:position     - marker at the point the request was sent.
+:status       - Short string describing the result of the request
+
+Example of a callback that messages the user with the response
+and info:
+
+(lambda (response info)
+  (if response
+      (let ((posn (marker-position (plist-get info :position)))
+            (buf  (buffer-name (plist-get info :buffer))))
+        (message \"Response for request from %S at %d: %s\"
+                 buf posn response))
+    (message \"request failed with message: %s\"
+             (plist-get info :status))))
+
+Or, for just the response:
+
+(lambda (response _)
+  ;; Do something with response
+  (message (rot13-string response)))
+
+If CALLBACK is omitted, the response is inserted at the point the
+request was sent.
+
+BUFFER is the buffer the request belongs to. If omitted the
+current buffer is recorded.
+
+POSITION is a buffer position (integer or marker). If omitted,
+the value of (point) is recorded."
+  (let* ((start-marker
+		  (cond
+		   ((null position)
+            (if (use-region-p)
+                (set-marker (make-marker) (region-end))
+			  (point-marker)))
+		   ((markerp position) position)
+		   ((integerp position)
+            (set-marker (make-marker) position buffer))))
+         (info (list :content content
+                     :buffer buffer
+                     :position start-marker)))
+    (funcall (alist-get backend immersive-translate-backend-alist) info callback)))
+
+;;;###autoload
 (defun immersive-translate-buffer ()
   "Translate the whole buffer."
   (interactive)
@@ -374,7 +481,7 @@ Nil otherwise."
 	(unless (immersive-translate-disable-p)
 	  (when-let* ((paragraph (immersive-translate-join-lin
 							  (immersive-translate--get-paragraph)))
-				  (content (if (eq immersive-translate-service 'chatgpt)
+				  (content (if (eq immersive-translate-backend 'chatgpt)
 							   (immersive-translate-chatgpt-create-prompt paragraph)
 							 paragraph))
 				  (ov t))
@@ -383,7 +490,7 @@ Nil otherwise."
 		(overlay-put ov
 					 'immersive-translate-pending
 					 t)
-		(immersive-translate-curl-do content)))))
+		(immersive-translate-do-translate content)))))
 
 ;;;###autoload
 (defun immersive-translate-clear ()

@@ -32,7 +32,7 @@
 
 ;;; Code:
 
-(require 'json)
+(require 'immersive-translate-curl)
 
 (declare-function immersive-translate-api-key "ext:immersive-translate")
 
@@ -125,6 +125,9 @@ CONTENT is the text to be translated."
   (let ((user-prompt (format immersive-translate-chatgpt-user-prompt content)))
 	`((:role "system" :content ,immersive-translate-chatgpt-system-prompt)
 	  (:role "user"   :content ,user-prompt))))
+
+(defun immersive-translate-chatgpt-translate (info &optional callback)
+  (immersive-translate-curl-do 'chatgpt info callback))
 
 (provide 'immersive-translate-chatgpt)
 ;;; immersive-translate-chatgpt.el ends here

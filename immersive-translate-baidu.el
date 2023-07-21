@@ -8,6 +8,8 @@
 ;; Version: v0.2.0
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
+(require 'immersive-translate-curl)
+
 (declare-function immersive-translate-api-key "ext:immersive-translate")
 (declare-function immersive-translate-clear "ext:immersive-translate")
 
@@ -82,6 +84,9 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
      (cl-loop for (key . val) in headers
               collect (format "-H%s: %s" key val))
      (list url))))
+
+(defun immersive-translate-baidu-translate (info &optional callback)
+  (immersive-translate-curl-do 'baidu info callback))
 
 (provide 'immersive-translate-baidu)
 ;;; immersive-translate-baidu.el ends here

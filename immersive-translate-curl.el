@@ -37,14 +37,8 @@
   (require 'subr-x))
 (require 'map)
 (require 'json)
-(require 'immersive-translate-chatgpt)
-(require 'immersive-translate-baidu)
 
-(defvar immersive-translate-service)
 (declare-function immersive-translate-callback "ext:immersive-translate")
-
-(defvar immersive-translate-curl--process-alist nil
-  "Alist of active immersive-translate curl requests.")
 
 (defcustom immersive-translate-curl-get-translation-alist
   '((chatgpt . immersive-translate-curl-chatgpt-get-translation)
@@ -67,9 +61,8 @@ argument, called with RESPONSE (a JSON object) returned in
 
 Each element looks like (SERVICE . FUNCTION);
 
-SERVICE is the translation service, see
-`immersive-translate-service'; FUNCTION is a function of two
-argument, called with CONTENT and TOKEN.
+SERVICE is the translation service; FUNCTION is a function of two
+arguments, called with CONTENT and TOKEN.
 
 CONTENT is the data to send, TOKEN is a unique identifier."
   :group 'immersive-translate
@@ -83,7 +76,7 @@ CONTENT is the data to send, TOKEN is a unique identifier."
   "Get the translated text return by BAIDU."
   (map-nested-elt response '(:trans_result 0 :dst)))
 
-(defun immersive-translate-curl--parse-response (buf token)
+(defun immersive-translate-curl--parse-response (buf token service)
   "Parse the buffer BUF with curl's response.
 
 TOKEN is used to disambiguate multiple requests in a single
@@ -112,7 +105,7 @@ buffer."
              ((equal http-status "200")
               (list (string-trim
                      (or (funcall (alist-get
-								   immersive-translate-service
+								   service
 								   immersive-translate-curl-get-translation-alist)
 								  response)
 						 ""))
@@ -136,12 +129,13 @@ buffer."
 PROCESS and _STATUS are process parameters."
   (let ((proc-buf (process-buffer process)))
     (when-let* (((eq (process-status process) 'exit))
-                (proc-info (alist-get process immersive-translate-curl--process-alist))
+                (proc-info (alist-get process immersive-translate--process-alist))
                 (proc-token (plist-get proc-info :token))
 				(proc-content (plist-get proc-info :content))
-                (proc-callback (plist-get proc-info :callback)))
+                (proc-callback (plist-get proc-info :callback))
+				(proc-service (plist-get proc-info :service)))
       (pcase-let ((`(,response ,http-msg ,error)
-                   (immersive-translate-curl--parse-response proc-buf proc-token)))
+                   (immersive-translate-curl--parse-response proc-buf proc-token proc-service)))
         (plist-put proc-info :status http-msg)
         (when error (plist-put proc-info :error error))
 		(when (and (plist-get proc-info :retry)
@@ -151,19 +145,12 @@ PROCESS and _STATUS are process parameters."
 				   (string-empty-p response)
 				   (not (plist-get proc-info :retry)))
 		  (plist-put proc-info :retry t)
-		  (immersive-translate-curl-get-response proc-info proc-callback))
+		  (immersive-translate-curl-do proc-service proc-info proc-callback))
         (funcall proc-callback response proc-info)))
-    (setf (alist-get process immersive-translate-curl--process-alist nil 'remove) nil)
+    (setf (alist-get process immersive-translate--process-alist nil 'remove) nil)
     (kill-buffer proc-buf)))
 
-(defun immersive-translate-url-get-args (content token)
-  "Produce list of arguments for calling Curl.
-
-CONTENT is the data to send, TOKEN is a unique identifier."
-  (let ((fun (alist-get immersive-translate-service immersive-translate-get-args-alist)))
-	(funcall fun content token)))
-
-(defun immersive-translate-curl-get-response (info &optional callback)
+(defun immersive-translate-curl-do (service info &optional callback)
   "Retrieve response to content in INFO.
 
 INFO is a plist with the following keys:
@@ -176,101 +163,20 @@ the response is inserted into the current buffer after point."
   (let* ((token (md5 (format "%s%s%s%s"
                              (random) (emacs-pid) (user-full-name)
                              (recent-keys))))
-         (args (immersive-translate-url-get-args (plist-get info :content) token))
+		 (func (alist-get service immersive-translate-get-args-alist))
+         (args (funcall func (plist-get info :content) token))
          (process (apply #'start-process "immersive-translate-curl"
                          (generate-new-buffer "*immersive-translate-curl*") "curl" args)))
     (with-current-buffer (process-buffer process)
       (set-process-query-on-exit-flag process nil)
-      (setf (alist-get process immersive-translate-curl--process-alist)
-            (nconc (list :token token
-                         :callback (or callback
-                                       #'immersive-translate-callback))
+      (setf (alist-get process immersive-translate--process-alist)
+            (nconc (list
+					:token token
+					:service service
+                    :callback (or callback
+                                  #'immersive-translate-callback))
                    info))
       (set-process-sentinel process #'immersive-translate-curl--sentinel))))
-
-
-(defun immersive-translate-abort (buf)
-  "Stop all active immersive-translate processes associated with the current buffer."
-  (interactive (list (current-buffer)))
-  (if-let* ((proc-attrs
-             (cl-remove-if
-              (lambda (proc-list)
-				(eq (plist-get (cdr proc-list) :buffer) buf))
-              immersive-translate-curl--process-alist)))
-      (dolist (proc-attr proc-attrs)
-		(let ((proc (car proc-attr)))
-		  (setf (alist-get proc immersive-translate-curl--process-alist nil 'remove) nil)
-		  (set-process-sentinel proc #'ignore)
-		  (delete-process proc)
-		  (kill-buffer (process-buffer proc))
-		  (message "Stopped all immersive-translate processes in buffer %S" (buffer-name buf))))
-    (message "No immersive-translate process associated with buffer %S" (buffer-name buf))))
-
-(cl-defun immersive-translate-curl-do
-    (&optional content &key callback
-               (buffer (current-buffer))
-               position)
-  "Request a response from `immersive-translate-service' for CONTENT.
-
-If PROMPT is
-- a string, it is used as is
-- A list of plists, it is used to create a full prompt suitable for
-  sending to ChatGPT.
-
-Keyword arguments:
-
-CALLBACK, if supplied, is a function of two arguments, called
-with the RESPONSE (a string) and INFO (a plist):
-
-(callback RESPONSE INFO)
-
-RESPONSE is nil if there was no response or an error.
-
-The INFO plist has (at least) the following keys:
-:content       - The content that was sent with the request
-:buffer       - The buffer current when the request was sent.
-:position     - marker at the point the request was sent.
-:status       - Short string describing the result of the request
-
-Example of a callback that messages the user with the response
-and info:
-
-(lambda (response info)
-  (if response
-      (let ((posn (marker-position (plist-get info :position)))
-            (buf  (buffer-name (plist-get info :buffer))))
-        (message \"Response for request from %S at %d: %s\"
-                 buf posn response))
-    (message \"request failed with message: %s\"
-             (plist-get info :status))))
-
-Or, for just the response:
-
-(lambda (response _)
-  ;; Do something with response
-  (message (rot13-string response)))
-
-If CALLBACK is omitted, the response is inserted at the point the
-request was sent.
-
-BUFFER is the buffer the request belongs to. If omitted the
-current buffer is recorded.
-
-POSITION is a buffer position (integer or marker). If omitted,
-the value of (point) is recorded."
-  (let* ((start-marker
-		  (cond
-		   ((null position)
-            (if (use-region-p)
-                (set-marker (make-marker) (region-end))
-			  (point-marker)))
-		   ((markerp position) position)
-		   ((integerp position)
-            (set-marker (make-marker) position buffer))))
-         (info (list :content content
-                     :buffer buffer
-                     :position start-marker)))
-    (immersive-translate-curl-get-response info callback)))
 
 (provide 'immersive-translate-curl)
 ;;; immersive-translate-curl.el ends here
