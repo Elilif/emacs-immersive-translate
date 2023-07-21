@@ -189,23 +189,22 @@ the response is inserted into the current buffer after point."
       (set-process-sentinel process #'immersive-translate-curl--sentinel))))
 
 
-(defun immersive-translate-curl-abort (buf)
-  "Stop any active curl process associated with the current buffer."
+(defun immersive-translate-abort (buf)
+  "Stop all active immersive-translate processes associated with the current buffer."
   (interactive (list (current-buffer)))
   (if-let* ((proc-attrs
-             (cl-find-if
+             (cl-remove-if
               (lambda (proc-list)
 				(eq (plist-get (cdr proc-list) :buffer) buf))
-              immersive-translate-curl--process-alist))
-            (proc (car proc-attrs)))
-      (progn
-        (setf (alist-get proc immersive-translate-curl--process-alist nil 'remove) nil)
-        (set-process-sentinel proc #'ignore)
-        (delete-process proc)
-        (kill-buffer (process-buffer proc))
-        (message "Stopped chatgpt request in buffer %S" (buffer-name buf)))
-    (message "No chatgpt request associated with buffer %S" (buffer-name buf))))
-
+              immersive-translate-curl--process-alist)))
+      (dolist (proc-attr proc-attrs)
+		(let ((proc (car proc-attr)))
+		  (setf (alist-get proc immersive-translate-curl--process-alist nil 'remove) nil)
+		  (set-process-sentinel proc #'ignore)
+		  (delete-process proc)
+		  (kill-buffer (process-buffer proc))
+		  (message "Stopped all immersive-translate processes in buffer %S" (buffer-name buf))))
+    (message "No immersive-translate process associated with buffer %S" (buffer-name buf))))
 
 (cl-defun immersive-translate-curl-do
     (&optional content &key callback
