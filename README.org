@@ -19,7 +19,17 @@
   (require 'immersive-translate)
   (add-hook 'elfeed-show-mode-hook #'immersive-translate-setup)
   (add-hook 'nov-pre-html-render-hook #'immersive-translate-setup)
-  (setq immersive-translate-backend 'baidu)
+  ;; use Baidu Translation
+  (setq immersive-translate-backend 'baidu
+		immersive-translate-baidu-appid "your-appid")
+
+  ;; use ChatGPT
+  ;; (setq immersive-translate-backend 'chatgpt
+  ;; 	  immersive-translate-chatgpt-host "api.openai.com")
+
+  ;; use translate-shell
+  ;; (setq immersive-translate-backend 'trans)
+
 #+end_src
 * 使用
 - =immersive-translate-buffer=
@@ -98,7 +108,7 @@
   #+begin_example
   machine fanyi-api.baidu.com login foobar password 123456
   #+end_example
-* 添加新的翻译后端
+* 添加新的翻译后端 (欢迎 PR!)
 ** 添加在线翻译服务
 如果想要添加新的翻译服务，可以查看变量
 =immersive-translate-curl-get-translation-alist= 和
