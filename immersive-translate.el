@@ -22,6 +22,8 @@
 (require 'immersive-translate-trans)
 
 
+
+;;;; Customizations
 (defgroup immersive-translate nil
   "Immersive translation"
   :group 'applications)
@@ -184,11 +186,12 @@ Predicate functions don't take any arguments."
         secret)
     (user-error (format "No %s found in the auth source" user))))
 
+
+;;;; shr
 (defun immersive-translate--shr-set-bound (orig dom)
   (let ((beg (point)))
     (funcall orig dom)
-    (when (and (< beg (point-max))
-               (> (point) 2))
+    (unless (= beg (point))
       (put-text-property beg (1+ beg) 'immersive-translate--beg (dom-tag dom))
       (put-text-property (- (point) 2) (1- (point)) 'immersive-translate--end (dom-tag dom)))))
 
@@ -199,6 +202,8 @@ Predicate functions don't take any arguments."
     (unless (memq tag immersive-translate-exclude-shr-tag)
       (advice-add function :around #'immersive-translate--shr-set-bound))))
 
+
+;;;; paragraph get functions
 (defun immersive-translate--info-get-paragraph ()
   "Return the paragraph at point."
   (forward-paragraph -1)
@@ -352,6 +357,8 @@ Predicate functions don't take any arguments."
     (_
      (immersive-translate--get-fill-region-string content-str))))
 
+
+;;;; utility functions
 (defun immersive-translate-callback (response info)
   "Insert RESPONSE from ChatGPT into the current buffer.
 
@@ -577,5 +584,7 @@ Translate paragraph under the cursor after Emacs is idle for
 (defun immersive-translate-setup ()
   (advice-add 'shr-descend :before #'immersive-translate--shr-tag-advice))
 
+
+;;;; provide
 (provide 'immersive-translate)
 ;;; immersive-translate.el ends here
