@@ -249,22 +249,36 @@ Predicate functions don't take any arguments."
     (_
      (thing-at-point 'paragraph t))))
 
+
+;;;; format functions
+(defun immersive-translate--get-prev-space (marker)
+  "Return the space number of previous line."
+  (with-current-buffer (marker-buffer marker)
+    (save-excursion
+      (goto-char marker)
+      (re-search-backward "^\\( *\\)" (line-beginning-position))
+      (length (match-string 1)))))
+
+(defmacro immersive-translate--set-indentation (&rest body)
+  (declare (indent defun))
+  `(replace-regexp-in-string
+    "^"
+    ,@body
+    (buffer-substring-no-properties
+     (point-min) (point-max))))
+
 (defun immersive-translate--info-transform-response (str marker)
   "Format STR in `Info-mode'."
   (let* ((fill-column 70)
          (str (string-trim-right str "[-=]+"))
-         (spaces (with-current-buffer (marker-buffer marker)
-                   (save-excursion
-                     (goto-char marker)
-                     (re-search-backward "^\\( *\\)" (line-beginning-position))
-                     (match-string 1)))))
+         (length (immersive-translate--get-prev-space marker)))
     (with-temp-buffer
       (insert str)
       (fill-region-as-paragraph (point-min) (point-max))
       (concat
        "\n"
-       (replace-regexp-in-string "^" spaces (buffer-substring-no-properties
-                                             (point-min) (point-max)))
+       (immersive-translate--set-indentation
+         (make-string length ? ))
        "\n"))))
 
 (defun immersive-translate--get-fill-region-string (str)
@@ -288,23 +302,34 @@ Predicate functions don't take any arguments."
   (let ((fill-column (or (and (boundp 'shr-width)
                               shr-width)
                          110))
-        (prefix-length 0))
+        (prefix-length 0)
+        (pre-space-length (immersive-translate--get-prev-space marker))
+        (align))
     (with-current-buffer (marker-buffer marker)
       (save-excursion
         (goto-char marker)
-        (when (eq (get-text-property (point) 'immersive-translate--end) 'li)
-          (text-property-search-backward 'immersive-translate--beg)
-          (setq prefix-length (get-text-property (point) 'shr-prefix-length)))))
+        (save-excursion
+          (beginning-of-line)
+          (when-let ((prop (text-property-search-forward 'display))
+                     ((< (point) marker)))
+            (setq align (prop-match-value prop))))
+        (text-property-search-backward 'immersive-translate--beg)
+        (beginning-of-line)
+        (setq prefix-length (get-text-property (point) 'shr-prefix-length))))
     (with-temp-buffer
       (insert str)
       (fill-region-as-paragraph (point-min) (point-max))
       (concat
        "\n"
-       (when (> prefix-length 0)
-         "\n")
-       (replace-regexp-in-string "^" (make-string prefix-length ? )
-                                 (buffer-substring-no-properties
-                                  (point-min) (point-max)))
+       (immersive-translate--set-indentation
+         (cond
+          (align
+           (propertize " " 'display align))
+          (prefix-length
+           (make-string prefix-length ? ))
+          (pre-space-length
+           (make-string pre-space-length ? ))
+          (t "")))
        "\n"))))
 
 (defun immersive-translate--help-transform-response (str)
