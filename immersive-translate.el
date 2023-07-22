@@ -531,7 +531,7 @@ the value of (point) is recorded."
         (setq ov (make-overlay (point) (1+ (point))))
         (overlay-put ov
                      'after-string
-                     "🔄")
+                     immersive-translate-pending-message)
         (immersive-translate-do-translate content)))))
 
 ;;;###autoload
