@@ -89,7 +89,7 @@ Leave it empty if you don't use a proxy."
   "JSON encode PROMPTS for sending to ChatGPT."
   (let ((prompts-plist
          `(:model ,immersive-translate-chatgpt-model
-				  :messages [,@prompts])))
+                  :messages [,@prompts])))
     (plist-put prompts-plist :temperature immersive-translate-chatgpt-temperature)
     prompts-plist))
 
@@ -98,15 +98,15 @@ Leave it empty if you don't use a proxy."
 
 PROMPTS is the data to send, TOKEN is a unique identifier."
   (let* ((url (format "https://%s/v1/chat/completions"
-					  immersive-translate-chatgpt-host))
+                      immersive-translate-chatgpt-host))
          (data (encode-coding-string
                 (json-encode (immersive-translate-chatgpt--request-data prompts))
                 'utf-8))
          (headers
           `(("Content-Type" . "application/json")
             ("Authorization" . ,(concat "Bearer " (immersive-translate-api-key
-												   immersive-translate-chatgpt-host
-												   "apikey"))))))
+                                                   immersive-translate-chatgpt-host
+                                                   "apikey"))))))
     (append
      (list "--location" "--silent" "--compressed" "--disable"
            (format "-X%s" "POST")
@@ -127,18 +127,18 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
 
 CONTENT is the text to be translated."
   (let ((user-prompt (format immersive-translate-chatgpt-user-prompt content)))
-	`((:role "system" :content ,immersive-translate-chatgpt-system-prompt)
-	  (:role "user"   :content ,user-prompt))))
+    `((:role "system" :content ,immersive-translate-chatgpt-system-prompt)
+      (:role "user"   :content ,user-prompt))))
 
 (defun immersive-translate-curl-chatgpt-get-translation (response)
   "Get the translated text return by CHATGPT."
   (map-nested-elt response '(:choices 0 :message :content)))
 
 (add-to-list 'immersive-translate-curl-get-translation-alist
-			 '(chatgpt . immersive-translate-curl-chatgpt-get-translation))
+             '(chatgpt . immersive-translate-curl-chatgpt-get-translation))
 
 (add-to-list 'immersive-translate-curl-get-args-alist
-			 '(chatgpt . immersive-translate-chatgpt-get-args))
+             '(chatgpt . immersive-translate-chatgpt-get-args))
 
 (defun immersive-translate-chatgpt-translate (info &optional callback)
   (immersive-translate-curl-do 'chatgpt info callback))

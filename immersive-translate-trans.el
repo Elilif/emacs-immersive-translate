@@ -48,24 +48,24 @@ See https://github.com/soimort/translate-shell for more details."
 (defun immersive-translate-trans-make-command (text)
   "Generate the whole translate-shell command fot TEXT."
   (list (concat
-		 "trans"
-		 " -e " immersive-translate-trans-engine
-		 " -s " immersive-translate-trans-source-language
-		 " -t " immersive-translate-trans-target-language
-		 " "
-		 immersive-translate-trans-default-args
-		 " "
-		 (shell-quote-argument text))))
+         "trans"
+         " -e " immersive-translate-trans-engine
+         " -s " immersive-translate-trans-source-language
+         " -t " immersive-translate-trans-target-language
+         " "
+         immersive-translate-trans-default-args
+         " "
+         (shell-quote-argument text))))
 
 (defun immersive-translate-trans--parse-response (buf)
   "Parse the buffer BUF with translate-shell's response."
   (with-current-buffer buf
-	(goto-char (point-max))
-	(let ((raw-content (buffer-substring-no-properties
-						(line-beginning-position 0)
-						(line-end-position 0))))
-	  (string-trim (or raw-content
-					   "")))))
+    (goto-char (point-max))
+    (let ((raw-content (buffer-substring-no-properties
+                        (line-beginning-position 0)
+                        (line-end-position 0))))
+      (string-trim (or raw-content
+                       "")))))
 
 
 ;; TODO: define a more generic sentinel
@@ -76,19 +76,19 @@ PROCESS and _STATUS are process parameters."
   (let ((proc-buf (process-buffer process)))
     (when-let* (((eq (process-status process) 'exit))
                 (proc-info (alist-get process immersive-translate--process-alist))
-				(proc-content (plist-get proc-info :content))
+                (proc-content (plist-get proc-info :content))
                 (proc-callback (plist-get proc-info :callback)))
       (pcase-let ((response
                    (immersive-translate-trans--parse-response proc-buf)))
-		(plist-put proc-info :status t)
-		(when (and (plist-get proc-info :retry)
-				   (string-empty-p response))
-		  (setq response "No response."))
-		(when (and proc-content
-				   (string-empty-p response)
-				   (not (plist-get proc-info :retry)))
-		  (plist-put proc-info :retry t)
-		  (immersive-translate-trans-translate proc-info proc-callback))
+        (plist-put proc-info :status t)
+        (when (and (plist-get proc-info :retry)
+                   (string-empty-p response))
+          (setq response "No response."))
+        (when (and proc-content
+                   (string-empty-p response)
+                   (not (plist-get proc-info :retry)))
+          (plist-put proc-info :retry t)
+          (immersive-translate-trans-translate proc-info proc-callback))
         (funcall proc-callback response proc-info)))
     (setf (alist-get process immersive-translate--process-alist nil 'remove) nil)
     (kill-buffer proc-buf)))

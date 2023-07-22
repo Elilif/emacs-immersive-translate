@@ -46,27 +46,27 @@ See https://fanyi-api.baidu.com/doc/21 for more defails."
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   (md5 (concat
-		immersive-translate-baidu-appid
-		content
-		immersive-translate-baidu-salt
-		(immersive-translate-api-key
-		 "fanyi-api.baidu.com"
-		 immersive-translate-baidu-appid))))
+        immersive-translate-baidu-appid
+        content
+        immersive-translate-baidu-salt
+        (immersive-translate-api-key
+         "fanyi-api.baidu.com"
+         immersive-translate-baidu-appid))))
 
 (defun immersive-translate-baidu--request-data (content)
   "Generate data in POST request.
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   (if (not (string-empty-p immersive-translate-baidu-appid))
-	  (format "q=%s&from=%s&to=%s&appid=%s&salt=%s&sign=%s"
-			  content
-			  immersive-translate-baidu-source-language
-			  immersive-translate-baidu-target-language
-			  immersive-translate-baidu-appid
-			  immersive-translate-baidu-salt
-			  (immersive-translate-baidu-generate-sign content))
-	(immersive-translate-clear)
-	(user-error "Please set `immersive-translate-baidu-appid'!")))
+      (format "q=%s&from=%s&to=%s&appid=%s&salt=%s&sign=%s"
+              content
+              immersive-translate-baidu-source-language
+              immersive-translate-baidu-target-language
+              immersive-translate-baidu-appid
+              immersive-translate-baidu-salt
+              (immersive-translate-baidu-generate-sign content))
+    (immersive-translate-clear)
+    (user-error "Please set `immersive-translate-baidu-appid'!")))
 
 (defun immersive-translate-baidu-get-args (content token)
   "Produce list of arguments for calling Curl.
@@ -94,10 +94,10 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
   (map-nested-elt response '(:trans_result 0 :dst)))
 
 (add-to-list 'immersive-translate-curl-get-translation-alist
-			 '(baidu . immersive-translate-curl-baidu-get-translation))
+             '(baidu . immersive-translate-curl-baidu-get-translation))
 
 (add-to-list 'immersive-translate-curl-get-args-alist
-			 '(baidu . immersive-translate-baidu-get-args))
+             '(baidu . immersive-translate-baidu-get-args))
 
 (defun immersive-translate-baidu-translate (info &optional callback)
   (immersive-translate-curl-do 'baidu info callback))

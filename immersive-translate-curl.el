@@ -85,7 +85,7 @@ buffer."
 
         (if-let* ((http-msg (string-trim
                              (buffer-substring (line-beginning-position)
-											   (line-end-position))))
+                                               (line-end-position))))
                   (http-status
                    (save-match-data
                      (and (string-match "HTTP/[.0-9]+ +\\([0-9]+\\)" http-msg)
@@ -99,10 +99,10 @@ buffer."
              ((equal http-status "200")
               (list (string-trim
                      (or (funcall (alist-get
-								   service
-								   immersive-translate-curl-get-translation-alist)
-								  response)
-						 ""))
+                                   service
+                                   immersive-translate-curl-get-translation-alist)
+                                  response)
+                         ""))
                     http-msg))
              ((plist-get response :error)
               (let* ((error-plist (plist-get response :error))
@@ -125,21 +125,21 @@ PROCESS and _STATUS are process parameters."
     (when-let* (((eq (process-status process) 'exit))
                 (proc-info (alist-get process immersive-translate--process-alist))
                 (proc-token (plist-get proc-info :token))
-				(proc-content (plist-get proc-info :content))
+                (proc-content (plist-get proc-info :content))
                 (proc-callback (plist-get proc-info :callback))
-				(proc-service (plist-get proc-info :service)))
+                (proc-service (plist-get proc-info :service)))
       (pcase-let ((`(,response ,http-msg ,error)
                    (immersive-translate-curl--parse-response proc-buf proc-token proc-service)))
         (plist-put proc-info :status http-msg)
         (when error (plist-put proc-info :error error))
-		(when (and (plist-get proc-info :retry)
-				   (string-empty-p response))
-		  (setq response immersive-translate-failed-message))
-		(when (and proc-content
-				   (string-empty-p response)
-				   (not (plist-get proc-info :retry)))
-		  (plist-put proc-info :retry t)
-		  (immersive-translate-curl-do proc-service proc-info proc-callback))
+        (when (and (plist-get proc-info :retry)
+                   (string-empty-p response))
+          (setq response immersive-translate-failed-message))
+        (when (and proc-content
+                   (string-empty-p response)
+                   (not (plist-get proc-info :retry)))
+          (plist-put proc-info :retry t)
+          (immersive-translate-curl-do proc-service proc-info proc-callback))
         (funcall proc-callback response proc-info)))
     (setf (alist-get process immersive-translate--process-alist nil 'remove) nil)
     (kill-buffer proc-buf)))
@@ -157,7 +157,7 @@ the response is inserted into the current buffer after point."
   (let* ((token (md5 (format "%s%s%s%s"
                              (random) (emacs-pid) (user-full-name)
                              (recent-keys))))
-		 (func (alist-get service immersive-translate-curl-get-args-alist))
+         (func (alist-get service immersive-translate-curl-get-args-alist))
          (args (funcall func (plist-get info :content) token))
          (process (apply #'start-process "immersive-translate-curl"
                          (generate-new-buffer "*immersive-translate-curl*") "curl" args)))
@@ -165,8 +165,8 @@ the response is inserted into the current buffer after point."
       (set-process-query-on-exit-flag process nil)
       (setf (alist-get process immersive-translate--process-alist)
             (nconc (list
-					:token token
-					:service service
+                    :token token
+                    :service service
                     :callback (or callback
                                   #'immersive-translate-callback))
                    info))
