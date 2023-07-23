@@ -274,91 +274,73 @@ Return nil otherwise."
 
 
 ;;;; format functions
-(defun immersive-translate--get-prev-space (marker)
-  "Return the space number of previous line."
-  (with-current-buffer (marker-buffer marker)
-    (save-excursion
-      (goto-char marker)
-      (re-search-backward "^\\( *\\)" (line-beginning-position))
-      (length (match-string 1)))))
+(defun immersive-translate--get-indent (marker)
+  "Return a list of the indentatoin info."
+  (let (align prefix-length spaces)
+    (with-current-buffer (marker-buffer marker)
+      (save-excursion
+        (goto-char marker)
+        (save-excursion
+          (re-search-backward "^\\( *\\)" (line-beginning-position))
+          (setq spaces (length (match-string 1)))
+          (when-let ((prop (text-property-search-forward 'display))
+                     ((< (point) (match-end 1))))
+            (setq align (prop-match-value prop))))
+        (text-property-search-backward 'immersive-translate--beg)
+        (beginning-of-line)
+        (setq prefix-length (get-text-property (point) 'shr-prefix-length))))
+    (list align prefix-length spaces)))
 
-(defmacro immersive-translate--set-indentation (&rest body)
-  (declare (indent defun))
-  `(replace-regexp-in-string
-    "^"
-    ,@body
-    (buffer-substring-no-properties
-     (point-min) (point-max))))
+(defun immersive-translate--format-translation (str marker)
+  "Function which produces the string to insert as a translation.
 
-(defun immersive-translate--info-transform-response (str marker)
-  "Format STR in `Info-mode'."
-  (let* ((fill-column 70)
-         (str (string-trim-right str "[-=]+"))
-         (length (immersive-translate--get-prev-space marker)))
+STR is the original translation. MARKER is the position where the
+translation should be inserted."
+  (pcase-let ((`(,align ,prefix-length ,spaces)
+               (immersive-translate--get-indent marker)))
     (with-temp-buffer
       (insert str)
       (fill-region-as-paragraph (point-min) (point-max))
       (concat
        "\n"
-       (immersive-translate--set-indentation
-         (make-string length ? ))
+       (replace-regexp-in-string
+        "^"
+        (cond
+         (align
+          (propertize " " 'display align))
+         (prefix-length
+          (make-string prefix-length ? ))
+         (spaces
+          (make-string spaces ? ))
+         (t ""))
+        (buffer-substring-no-properties
+         (point-min) (point-max)))
        "\n"))))
 
-(defun immersive-translate--get-fill-region-string (str)
-  "Format STR."
-  (with-temp-buffer
-    (insert "\n")
-    (insert str)
-    (insert "\n")
-    (fill-region-as-paragraph (point-min) (point-max))
-    (buffer-string)))
+(defun immersive-translate--info-transform-response (str marker)
+  "Format STR in `Info-mode'."
+  (let* ((fill-column 70)
+         (str (string-trim-right str "[-=]+")))
+    (immersive-translate--format-translation str marker)))
 
-(defun immersive-translate--nov-transform-response (str)
+(defun immersive-translate--nov-transform-response (str marker)
   "Format STR in `nov-mode.'"
   (let ((fill-column (or (and (boundp 'nov-text-width)
                               nov-text-width)
                          120)))
-    (immersive-translate--get-fill-region-string str)))
+    (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--elfeed-transform-response (str marker)
   "Format STR in `elfeed-mode'."
   (let ((fill-column (or (and (boundp 'shr-width)
                               shr-width)
-                         110))
-        (prefix-length 0)
-        (pre-space-length (immersive-translate--get-prev-space marker))
-        (align))
-    (with-current-buffer (marker-buffer marker)
-      (save-excursion
-        (goto-char marker)
-        (save-excursion
-          (beginning-of-line)
-          (when-let ((prop (text-property-search-forward 'display))
-                     ((< (point) marker)))
-            (setq align (prop-match-value prop))))
-        (text-property-search-backward 'immersive-translate--beg)
-        (beginning-of-line)
-        (setq prefix-length (get-text-property (point) 'shr-prefix-length))))
-    (with-temp-buffer
-      (insert str)
-      (fill-region-as-paragraph (point-min) (point-max))
-      (concat
-       "\n"
-       (immersive-translate--set-indentation
-         (cond
-          (align
-           (propertize " " 'display align))
-          (prefix-length
-           (make-string prefix-length ? ))
-          (pre-space-length
-           (make-string pre-space-length ? ))
-          (t "")))
-       "\n"))))
+                         110)))
+    (immersive-translate--format-translation str marker)))
 
-(defun immersive-translate--help-transform-response (str)
+(defun immersive-translate--help-transform-response (str marker)
   "Format STR in `help-mode'."
   (let ((fill-column 70))
-    (immersive-translate--get-fill-region-string str)))
+    (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--transform-response (content-str &optional marker)
   "Format CONTENT-STR."
@@ -366,14 +348,14 @@ Return nil otherwise."
     ('Info-mode
      (immersive-translate--info-transform-response content-str marker))
     ('nov-mode
-     (immersive-translate--nov-transform-response content-str))
+     (immersive-translate--nov-transform-response content-str marker))
     ('elfeed-show-mode
      (immersive-translate--elfeed-transform-response content-str marker))
     ((or 'helpful-mode
          'help-mode)
-     (immersive-translate--help-transform-response content-str))
+     (immersive-translate--help-transform-response content-str marker))
     (_
-     (immersive-translate--get-fill-region-string content-str))))
+     (immersive-translate--format-translation content-str marker))))
 
 
 ;;;; utility functions
