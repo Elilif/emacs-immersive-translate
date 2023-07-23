@@ -5,7 +5,7 @@
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
 ;; Url: https://github.com/Elilif/emacs-immersive-translate
 
-;; Version: v0.2.0
+;; Version: v0.3.0
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (require 'immersive-translate-curl)

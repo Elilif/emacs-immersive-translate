@@ -1,4 +1,10 @@
 #+title: Emacs-immersive-translate changelog
+* v0.3.0(2023-07-24)
+** New feaure: separate front-end and translating backends
+- Use =immersive-translate-backend= to select different translation services.
+- Use =immersive-translate-backend-alist= to add new backends.
+** Add =immersive-translate--format-translation= 
+** Add =Translate-shell= backend
 * v0.2.0 (2023-07-21)
 ** New feature: enable multiple translation services
 Now users can select different translation services by setting =immersive-translate-service=.
