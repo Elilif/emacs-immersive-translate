@@ -242,6 +242,22 @@ Predicate functions don't take any arguments."
           (buffer-substring-no-properties (+ beg-pos 2) end-pos)
         (buffer-substring-no-properties beg-pos end-pos)))))
 
+(defun immersive-translate--elfeed-tube-get-paragraph ()
+  "Return the paragraph at point."
+  (forward-paragraph -1)
+  (forward-line)
+  (let ((para (thing-at-point 'paragraph t)))
+    (string-trim-left para "\n\\[.*?\\] \\- \\[.*?\\]:\n")))
+
+(defun immersive-translate--elfeed-tube-p (&optional mode)
+  "Return non-nil if the current feed is a Youtube RSS feed.
+
+Return nil otherwise."
+  (when (eq mode 'elfeed-show-mode)
+    (save-excursion
+      (goto-char (point-min))
+      (text-property-search-forward 'timestamp))))
+
 (defun immersive-translate--get-paragraph ()
   "Return the paragraph at point."
   (pcase major-mode
@@ -249,6 +265,8 @@ Predicate functions don't take any arguments."
      (immersive-translate--info-get-paragraph))
     ('helpful-mode
      (immersive-translate--helpful-get-paragraph))
+    ((pred immersive-translate--elfeed-tube-p)
+     (immersive-translate--elfeed-tube-get-paragraph))
     ((or 'elfeed-show-mode 'nov-mode)
      (immersive-translate--elfeed-get-paragraph))
     (_
@@ -398,7 +416,8 @@ Nil otherwise."
 (defun immersive-translate-end-of-paragraph ()
   "Move to the end of the current paragraph."
   (pcase major-mode
-    ((or 'elfeed-show-mode 'nov-mode)
+    ((and (or 'elfeed-show-mode 'nov-mode)
+          (pred (not immersive-translate--elfeed-tube-p)))
      (text-property-search-forward 'immersive-translate--end)
      (backward-char))
     (_ (end-of-paragraph-text))))
@@ -413,7 +432,8 @@ Nil otherwise."
   (save-excursion
     (goto-char start)
     (pcase major-mode
-      ((or 'elfeed-show-mode 'nov-mode)
+      ((and (or 'elfeed-show-mode 'nov-mode)
+            (pred (not immersive-translate--elfeed-tube-p)))
        (immersive-translate-paragraph)
        (while (and (text-property-search-forward 'immersive-translate--end)
                    (< (point) end))
