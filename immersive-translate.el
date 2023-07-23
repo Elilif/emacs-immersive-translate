@@ -94,6 +94,7 @@ argument."
                                                  dl
                                                  strong
                                                  i
+                                                 u
                                                  em
                                                  table)
   "HTML components that should not be translated."
