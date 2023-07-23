@@ -533,7 +533,14 @@ the value of (point) is recorded."
 (defun immersive-translate-buffer ()
   "Translate the whole buffer."
   (interactive)
-  (immersive-translate-region (point-min) (point-max)))
+  (pcase major-mode
+    ((pred immersive-translate--elfeed-tube-p)
+     (save-excursion
+       (goto-char (point-min))
+       (let ((beg (search-forward "Transcript:\n" (point-max) 'noerror)))
+         (immersive-translate-region beg (point-max)))))
+    (_
+     (immersive-translate-region (point-min) (point-max)))))
 
 ;;;###autoload
 (defun immersive-translate-paragraph ()
