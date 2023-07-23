@@ -275,47 +275,30 @@ Return nil otherwise."
 
 ;;;; format functions
 (defun immersive-translate--get-indent (marker)
-  "Return a list of the indentatoin info."
-  (let (align prefix-length spaces)
-    (with-current-buffer (marker-buffer marker)
+  "Return the indentation of the original text."
+  (with-current-buffer (marker-buffer marker)
+    (save-excursion
+      (goto-char marker)
       (save-excursion
-        (goto-char marker)
-        (save-excursion
-          (re-search-backward "^\\( *\\)" (line-beginning-position))
-          (setq spaces (length (match-string 1)))
-          (when-let ((prop (text-property-search-forward 'display))
-                     ((< (point) (match-end 1))))
-            (setq align (prop-match-value prop))))
-        (text-property-search-backward 'immersive-translate--beg)
-        (beginning-of-line)
-        (setq prefix-length (get-text-property (point) 'shr-prefix-length))))
-    (list align prefix-length spaces)))
+        (re-search-backward "^\\( *\\)" (line-beginning-position))
+        (match-string 1)))))
 
 (defun immersive-translate--format-translation (str marker)
   "Function which produces the string to insert as a translation.
 
 STR is the original translation. MARKER is the position where the
 translation should be inserted."
-  (pcase-let ((`(,align ,prefix-length ,spaces)
-               (immersive-translate--get-indent marker)))
-    (with-temp-buffer
-      (insert str)
-      (fill-region-as-paragraph (point-min) (point-max))
-      (concat
-       "\n"
-       (replace-regexp-in-string
-        "^"
-        (cond
-         (align
-          (propertize " " 'display align))
-         (prefix-length
-          (make-string prefix-length ? ))
-         (spaces
-          (make-string spaces ? ))
-         (t ""))
-        (buffer-substring-no-properties
-         (point-min) (point-max)))
-       "\n"))))
+  (with-temp-buffer
+    (insert str)
+    (fill-region-as-paragraph (point-min) (point-max))
+    (concat
+     "\n"
+     (replace-regexp-in-string
+      "^"
+      (immersive-translate--get-indent marker)
+      (buffer-substring-no-properties
+       (point-min) (point-max)))
+     "\n")))
 
 (defun immersive-translate--info-transform-response (str marker)
   "Format STR in `Info-mode'."
