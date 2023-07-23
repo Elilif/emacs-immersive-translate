@@ -438,8 +438,10 @@ Nil otherwise."
        (while (and (text-property-search-forward 'immersive-translate--end)
                    (< (point) end))
          (immersive-translate-paragraph)))
-      (_ (while (and (re-search-forward "^\\s-*$" end 'noerror)
-                     (not (eobp)))
+      (_ (while (and
+                 (< (point) end)
+                 (re-search-forward "^\\s-*$" end 'noerror)
+                 (not (eobp)))
            (forward-line)
            (immersive-translate-paragraph))))))
 
