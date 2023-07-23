@@ -189,7 +189,11 @@ Predicate functions don't take any arguments."
     (funcall orig dom)
     (unless (= beg (point))
       (put-text-property beg (1+ beg) 'immersive-translate--beg (dom-tag dom))
-      (put-text-property (- (point) 2) (1- (point)) 'immersive-translate--end (dom-tag dom)))))
+      (save-excursion
+        (save-restriction
+          (widen)
+          (skip-chars-backward "[ \n\t]")
+          (put-text-property (1- (point)) (point) 'immersive-translate--end (dom-tag dom)))))))
 
 (defun immersive-translate--shr-tag-advice (dom)
   (let* ((tag (dom-tag dom))
@@ -229,11 +233,11 @@ Predicate functions don't take any arguments."
 (defun immersive-translate--elfeed-get-paragraph ()
   "Return the paragraph at point."
   (save-excursion
-    (when-let* ((end-prop (text-property-search-forward 'immersive-translate--end))
-                (end-pos (prop-match-beginning end-prop))
-                (beg-prop (text-property-search-backward 'immersive-translate--beg))
+    (when-let* ((beg-prop (text-property-search-backward 'immersive-translate--beg))
+                (beg-pos (prop-match-beginning beg-prop))
                 (tag (prop-match-value beg-prop))
-                (beg-pos (prop-match-beginning beg-prop)))
+                (end-prop (text-property-search-forward 'immersive-translate--end))
+                (end-pos (prop-match-beginning end-prop)))
       (if (eq tag 'li)
           (buffer-substring-no-properties (+ beg-pos 2) end-pos)
         (buffer-substring-no-properties beg-pos end-pos)))))
@@ -263,7 +267,7 @@ Return nil otherwise."
      (immersive-translate--helpful-get-paragraph))
     ((pred immersive-translate--elfeed-tube-p)
      (immersive-translate--elfeed-tube-get-paragraph))
-    ((or 'elfeed-show-mode 'nov-mode)
+    ((or 'elfeed-show-mode 'nov-mode 'mu4e-view-mode)
      (immersive-translate--elfeed-get-paragraph))
     (_
      (thing-at-point 'paragraph t))))
@@ -314,7 +318,14 @@ translation should be inserted."
   (let ((fill-column (or (and (boundp 'shr-width)
                               shr-width)
                          110)))
-    (immersive-translate--format-translation str marker)))
+    (save-excursion
+      (goto-char marker)
+      (let* ((beg-prop (text-property-search-backward 'immersive-translate--beg))
+             (tag (prop-match-value beg-prop)))
+        (concat (immersive-translate--format-translation str marker)
+                (if (eq tag 'li)
+                    "\n"
+                  ""))))))
 
 (defun immersive-translate--help-transform-response (str marker)
   "Format STR in `help-mode'."
@@ -353,7 +364,7 @@ INFO is a plist containing information relevant to this buffer."
             (save-excursion
               (with-current-buffer (marker-buffer start-marker)
                 (goto-char start-marker)
-                (let ((ovs (overlays-in (point) (1+ (point))))
+                (let ((ovs (overlays-in (1- (point)) (point)))
                       (new-ov (make-overlay (point) (1+ (point)))))
                   (mapc (lambda (ov)
                           (when (overlay-get ov 'after-string)
@@ -377,23 +388,27 @@ Nil otherwise."
 (defun immersive-translate-end-of-paragraph ()
   "Move to the end of the current paragraph."
   (pcase major-mode
-    ((and (or 'elfeed-show-mode 'nov-mode)
+    ((and (or 'elfeed-show-mode 'nov-mode 'mu4e-view-mode)
           (pred (not immersive-translate--elfeed-tube-p)))
+     (unless (get-text-property (point) 'immersive-translate--beg)
+       (text-property-search-backward 'immersive-translate--beg))
      (text-property-search-forward 'immersive-translate--end)
-     (backward-char))
+     (end-of-line))
     (_ (end-of-paragraph-text))))
 
 (defun immersive-translate-join-lin (paragraph)
   (when paragraph
-    (string-clean-whitespace
-     (replace-regexp-in-string "\n" " " paragraph))))
+    (let ((new-str (string-clean-whitespace
+                    (replace-regexp-in-string "\n" " " paragraph))))
+      (unless (string-empty-p new-str)
+        new-str))))
 
 (defun immersive-translate-region (start end)
   "Translate the text between START and END."
   (save-excursion
     (goto-char start)
     (pcase major-mode
-      ((and (or 'elfeed-show-mode 'nov-mode)
+      ((and (or 'elfeed-show-mode 'nov-mode 'mu4e-view-mode)
             (pred (not immersive-translate--elfeed-tube-p)))
        (immersive-translate-paragraph)
        (while (and (text-property-search-forward 'immersive-translate--end)
@@ -518,7 +533,7 @@ the value of (point) is recorded."
                              paragraph))
                   (ov t))
         (immersive-translate-end-of-paragraph)
-        (setq ov (make-overlay (point) (1+ (point))))
+        (setq ov (make-overlay (1- (point)) (point)))
         (overlay-put ov
                      'after-string
                      immersive-translate-pending-message)
