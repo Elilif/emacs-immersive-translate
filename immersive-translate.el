@@ -235,8 +235,8 @@ Predicate functions don't take any arguments."
   (save-excursion
     (when-let* ((end-prop (text-property-search-forward 'immersive-translate--end))
                 (end-pos (prop-match-beginning end-prop))
-                (tag (prop-match-value end-prop))
                 (beg-prop (text-property-search-backward 'immersive-translate--beg))
+                (tag (prop-match-value beg-prop))
                 (beg-pos (prop-match-beginning beg-prop)))
       (if (eq tag 'li)
           (buffer-substring-no-properties (+ beg-pos 2) end-pos)
