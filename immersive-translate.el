@@ -146,13 +146,8 @@ argument."
 (defun immersive-translate--translation-exist-p ()
   "Return non-nil if the current paragraph has been translated."
   (save-excursion
-    (pcase major-mode
-      ((or 'elfeed-show-mode 'nov-mode)
-       (text-property-search-forward 'immersive-translate--end)
-       (backward-char))
-      (_
-       (end-of-paragraph-text)))
-    (when-let ((overlays (overlays-in (point) (1+ (point)))))
+    (immersive-translate-end-of-paragraph)
+    (when-let ((overlays (overlays-in (1- (point)) (point))))
       (cl-some (lambda (ov)
                  (overlay-get ov 'after-string))
                overlays))))
