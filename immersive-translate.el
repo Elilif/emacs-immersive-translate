@@ -147,7 +147,7 @@ argument."
   "Return non-nil if the current paragraph has been translated."
   (save-excursion
     (immersive-translate-end-of-paragraph)
-    (when-let ((overlays (overlays-in (1- (point)) (point))))
+    (when-let ((overlays (overlays-in (point) (1+ (point)))))
       (cl-some (lambda (ov)
                  (overlay-get ov 'after-string))
                overlays))))
