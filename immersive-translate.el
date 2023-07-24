@@ -242,6 +242,7 @@ Advice for ORIG (shr-tag-*)."
 (defun immersive-translate--elfeed-get-paragraph ()
   "Return the paragraph at point."
   (save-excursion
+    (immersive-translate-end-of-paragraph)
     (when-let* ((beg-prop (text-property-search-backward 'immersive-translate--beg))
                 (beg-pos (prop-match-beginning beg-prop))
                 (tag (prop-match-value beg-prop))
