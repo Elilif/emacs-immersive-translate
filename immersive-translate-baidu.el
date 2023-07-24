@@ -8,7 +8,13 @@
 ;; Version: v0.3.0
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
+
+;;; Commentary:
+;; 
+
 (require 'immersive-translate-curl)
+
+;;; Code:
 
 (declare-function immersive-translate-api-key "ext:immersive-translate")
 (declare-function immersive-translate-clear "ext:immersive-translate")
@@ -18,14 +24,14 @@
   :group 'immersive-translate)
 
 (defcustom immersive-translate-baidu-source-language "en"
-  "The source language
+  "The source language.
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   :group 'immersive-translate-baidu
   :type 'string)
 
 (defcustom immersive-translate-baidu-target-language "zh"
-  "The target language
+  "The target language.
 
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   :group 'immersive-translate-baidu
@@ -44,6 +50,7 @@ See https://fanyi-api.baidu.com/doc/21 for more defails."
 (defun immersive-translate-baidu-generate-sign (content)
   "Generate the sign used by Baidu Trasnlate API.
 
+CONTENT is the text to be translated.
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   (md5 (concat
         immersive-translate-baidu-appid
@@ -56,6 +63,7 @@ See https://fanyi-api.baidu.com/doc/21 for more defails."
 (defun immersive-translate-baidu--request-data (content)
   "Generate data in POST request.
 
+CONTENT is the text to be translated.
 See https://fanyi-api.baidu.com/doc/21 for more defails."
   (if (not (string-empty-p immersive-translate-baidu-appid))
       (format "q=%s&from=%s&to=%s&appid=%s&salt=%s&sign=%s"
@@ -71,7 +79,8 @@ See https://fanyi-api.baidu.com/doc/21 for more defails."
 (defun immersive-translate-baidu-get-args (content token)
   "Produce list of arguments for calling Curl.
 
-PROMPTS is the data to send, TOKEN is a unique identifier."
+CONTENT is the text to be translated, TOKEN is a unique
+identifier."
   (let* ((url "https://fanyi-api.baidu.com/api/trans/vip/translate")
          (data (encode-coding-string
                 (immersive-translate-baidu--request-data content)
@@ -90,7 +99,7 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
      (list url))))
 
 (defun immersive-translate-curl-baidu-get-translation (response)
-  "Get the translated text return by BAIDU."
+  "Get the translated text in RESPONSE returned by BAIDU."
   (map-nested-elt response '(:trans_result 0 :dst)))
 
 (add-to-list 'immersive-translate-curl-get-translation-alist
@@ -100,6 +109,15 @@ PROMPTS is the data to send, TOKEN is a unique identifier."
              '(baidu . immersive-translate-baidu-get-args))
 
 (defun immersive-translate-baidu-translate (info &optional callback)
+  "Translate the content in INFO using Baidu Translation.
+
+INFO is a plist with the following keys:
+- :content (the text needed to be translated)
+- :buffer (the current buffer)
+- :position (marker at which to insert the response).
+
+Call CALLBACK with the response and INFO afterwards. If omitted
+the response is inserted into the current buffer after point."
   (immersive-translate-curl-do 'baidu info callback))
 
 (provide 'immersive-translate-baidu)

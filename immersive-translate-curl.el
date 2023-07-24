@@ -74,7 +74,7 @@ CONTENT is the data to send, TOKEN is a unique identifier."
   "Parse the buffer BUF with curl's response.
 
 TOKEN is used to disambiguate multiple requests in a single
-buffer."
+buffer. SERVICE is the translation API to use."
   (with-current-buffer buf
     (progn
       (goto-char (point-max))
@@ -147,6 +147,7 @@ PROCESS and _STATUS are process parameters."
 (defun immersive-translate-curl-do (service info &optional callback)
   "Retrieve response to content in INFO.
 
+SERVICE is the translation API to use.Service.
 INFO is a plist with the following keys:
 - :content (the text needed to be translated)
 - :buffer (the current buffer)

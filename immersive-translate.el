@@ -25,7 +25,7 @@
 
 ;;;; Customizations
 (defgroup immersive-translate nil
-  "Immersive translation"
+  "Immersive translation."
   :group 'applications)
 
 (defcustom immersive-translate-auto-idle 0.5
@@ -171,7 +171,12 @@ Predicate functions don't take any arguments."
 (defvar-local immersive-translate--window-end nil)
 
 (defun immersive-translate-api-key (host user)
-  "Lookup api key in the auth source."
+  "Lookup api key in the auth source.
+
+By default, `immersive-translate-chatgpt-host' is used as HOST
+and \"apikey\" as USER in Chatgpt backend.
+\"fanyi-api.baidu.com\" is used as HOST and
+`immersive-translate-baidu-appid' as USER in Baidu backend."
   (if-let ((secret (plist-get (car (auth-source-search
                                     :host host
                                     :user user
@@ -185,6 +190,9 @@ Predicate functions don't take any arguments."
 
 ;;;; shr
 (defun immersive-translate--shr-set-bound (orig dom)
+  "Set DOM bound.
+
+Advice for ORIG (shr-tag-*)."
   (let ((beg (point)))
     (funcall orig dom)
     (unless (= beg (point))
@@ -196,6 +204,7 @@ Predicate functions don't take any arguments."
           (put-text-property (1- (point)) (point) 'immersive-translate--end (dom-tag dom)))))))
 
 (defun immersive-translate--shr-tag-advice (dom)
+  "Add advice for DOM."
   (let* ((tag (dom-tag dom))
          (function
           (intern (concat "shr-tag-" (symbol-name tag)) obarray)))
@@ -250,7 +259,7 @@ Predicate functions don't take any arguments."
     (string-trim-left para "\n\\[.*?\\] \\- \\[.*?\\]:\n")))
 
 (defun immersive-translate--elfeed-tube-p (&optional mode)
-  "Return non-nil if the current feed is a Youtube RSS feed.
+  "Return non-nil if the current feed in MODE is a Youtube RSS feed.
 
 Return nil otherwise."
   (when (eq mode 'elfeed-show-mode)
@@ -275,7 +284,7 @@ Return nil otherwise."
 
 ;;;; format functions
 (defun immersive-translate--get-indent (marker)
-  "Return the indentation of the original text."
+  "Return the indentation of the original text at MARKER."
   (with-current-buffer (marker-buffer marker)
     (save-excursion
       (goto-char marker)
@@ -301,20 +310,20 @@ translation should be inserted."
      "\n")))
 
 (defun immersive-translate--info-transform-response (str marker)
-  "Format STR in `Info-mode'."
+  "Format STR at MARKER in `Info-mode'."
   (let* ((fill-column 70)
          (str (string-trim-right str "[-=]+")))
     (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--nov-transform-response (str marker)
-  "Format STR in `nov-mode.'"
+  "Format STR at MARKER in `nov-mode'."
   (let ((fill-column (or (and (boundp 'nov-text-width)
                               nov-text-width)
                          120)))
     (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--elfeed-transform-response (str marker)
-  "Format STR in `elfeed-mode'."
+  "Format STR at MARKER in `elfeed-mode'."
   (let ((fill-column (or (and (boundp 'shr-width)
                               shr-width)
                          110)))
@@ -328,12 +337,12 @@ translation should be inserted."
                   ""))))))
 
 (defun immersive-translate--help-transform-response (str marker)
-  "Format STR in `help-mode'."
+  "Format STR at MARKER in `help-mode'."
   (let ((fill-column 70))
     (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--transform-response (content-str &optional marker)
-  "Format CONTENT-STR."
+  "Format CONTENT-STR at MARKER."
   (pcase major-mode
     ('Info-mode
      (immersive-translate--info-transform-response content-str marker))
@@ -397,6 +406,7 @@ Nil otherwise."
     (_ (end-of-paragraph-text))))
 
 (defun immersive-translate-join-lin (paragraph)
+  "Form the current PARAGRAPH into a continuous paragraph."
   (when paragraph
     (let ((new-str (string-clean-whitespace
                     (replace-regexp-in-string "\n" " " paragraph))))
@@ -423,8 +433,7 @@ Nil otherwise."
 
 ;;;###autoload
 (defun immersive-translate-abort (buf)
-  "Stop all active immersive-translate processes associated with
- the current buffer."
+  "Stop all active immersive-translate processes in BUF."
   (interactive (list (current-buffer)))
   (if-let* ((proc-attrs
              (cl-remove-if-not
@@ -457,7 +466,7 @@ Keyword arguments:
 CALLBACK, if supplied, is a function of two arguments, called
 with the RESPONSE (a string) and INFO (a plist):
 
-(callback RESPONSE INFO)
+\(callback RESPONSE INFO)
 
 RESPONSE is nil if there was no response or an error.
 
@@ -470,7 +479,7 @@ The INFO plist has (at least) the following keys:
 Example of a callback that messages the user with the response
 and info:
 
-(lambda (response info)
+\(lambda (response info)
   (if response
       (let ((posn (marker-position (plist-get info :position)))
             (buf  (buffer-name (plist-get info :buffer))))
@@ -481,7 +490,7 @@ and info:
 
 Or, for just the response:
 
-(lambda (response _)
+\(lambda (response _)
   ;; Do something with response
   (message (rot13-string response)))
 
@@ -492,7 +501,10 @@ BUFFER is the buffer the request belongs to. If omitted the
 current buffer is recorded.
 
 POSITION is a buffer position (integer or marker). If omitted,
-the value of (point) is recorded."
+the value of (point) is recorded.
+
+BACKEND is the translation backend to use. If omitted, the value
+of `immersive-translate-backend' is used."
   (let* ((start-marker
           (cond
            ((null position)
@@ -553,6 +565,7 @@ the value of (point) is recorded."
   (setq immersive-translate--translation-overlays nil))
 
 (defun immersive-translate--auto-translate-window ()
+  "Translate the text in the current window."
   (let ((start (window-start))
         (end (window-end)))
     (setq immersive-translate--window-start start
@@ -561,7 +574,7 @@ the value of (point) is recorded."
 
 ;;;###autoload
 (define-minor-mode immersive-translate-auto-mode
-  "Toggle immersive-translate-auto-mode.
+  "Toggle `immersive-translate-auto-mode'.
 
 Translate paragraph under the cursor after Emacs is idle for
 `immersive-translate-auto-idle' seconds."
@@ -581,6 +594,7 @@ Translate paragraph under the cursor after Emacs is idle for
           immersive-translate--window-end nil))))
 
 (defun immersive-translate--auto-translate ()
+  "Helper Function for `immersive-translate-auto-mode'."
   (when (and immersive-translate-auto-mode
              immersive-translate--window-end
              (or (< (window-start) immersive-translate--window-start)
@@ -589,6 +603,7 @@ Translate paragraph under the cursor after Emacs is idle for
 
 ;;;###autoload
 (defun immersive-translate-setup ()
+  "Setup immersive-trasnlate."
   (advice-add 'shr-descend :before #'immersive-translate--shr-tag-advice))
 
 

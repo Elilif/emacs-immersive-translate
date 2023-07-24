@@ -8,6 +8,12 @@
 ;; Version: v0.3.0
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
+
+;;; Commentary:
+;; 
+
+;;; Code:
+
 (defvar immersive-translate--process-alist)
 (declare-function immersive-translate-callback "ext:immersive-translate")
 

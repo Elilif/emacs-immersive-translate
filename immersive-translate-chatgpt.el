@@ -86,7 +86,9 @@ Leave it empty if you don't use a proxy."
   :type 'string)
 
 (defun immersive-translate-chatgpt--request-data (prompts)
-  "JSON encode PROMPTS for sending to ChatGPT."
+  "Encode data into JSON format..
+
+Argument PROMPTS are for sending to chatgpt."
   (let ((prompts-plist
          `(:model ,immersive-translate-chatgpt-model
                   :messages [,@prompts])))
@@ -131,7 +133,7 @@ CONTENT is the text to be translated."
       (:role "user"   :content ,user-prompt))))
 
 (defun immersive-translate-curl-chatgpt-get-translation (response)
-  "Get the translated text return by CHATGPT."
+  "Get the translated text in RESPONSE returned by CHATGPT."
   (map-nested-elt response '(:choices 0 :message :content)))
 
 (add-to-list 'immersive-translate-curl-get-translation-alist
@@ -141,6 +143,15 @@ CONTENT is the text to be translated."
              '(chatgpt . immersive-translate-chatgpt-get-args))
 
 (defun immersive-translate-chatgpt-translate (info &optional callback)
+  "Translate the content in INFO using ChatGPT.
+
+INFO is a plist with the following keys:
+- :content (the text needed to be translated)
+- :buffer (the current buffer)
+- :position (marker at which to insert the response).
+
+Call CALLBACK with the response and INFO afterwards. If omitted
+the response is inserted into the current buffer after point."
   (immersive-translate-curl-do 'chatgpt info callback))
 
 (provide 'immersive-translate-chatgpt)
