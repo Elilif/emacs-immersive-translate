@@ -349,7 +349,7 @@ translation should be inserted."
      (immersive-translate--info-transform-response content-str marker))
     ('nov-mode
      (immersive-translate--nov-transform-response content-str marker))
-    ('elfeed-show-mode
+    ((or 'elfeed-show-mode 'mu4e-view-mode)
      (immersive-translate--elfeed-transform-response content-str marker))
     ((or 'helpful-mode
          'help-mode)
