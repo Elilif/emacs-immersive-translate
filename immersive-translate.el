@@ -421,7 +421,6 @@ Nil otherwise."
     (pcase major-mode
       ((and (or 'elfeed-show-mode 'nov-mode 'mu4e-view-mode)
             (pred (not immersive-translate--elfeed-tube-p)))
-       (immersive-translate-paragraph)
        (while (and (text-property-search-forward 'immersive-translate--end)
                    (< (point) end))
          (immersive-translate-paragraph)))
