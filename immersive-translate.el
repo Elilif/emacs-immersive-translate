@@ -101,6 +101,11 @@ argument."
   :group 'immersive-translate
   :type '(repeat symbol))
 
+(defcustom immersive-translate-cache-directory "~/.emacs.d/var/immersive-translate/"
+  "The directory where cached translations will be stored."
+  :group 'immersive-translate
+  :type 'directory)
+
 (defun immersive-translate--info-code-block-p ()
   "Return non-nil if the current paragraph is a code block."
   (let ((current-line (thing-at-point 'line t)))
@@ -359,6 +364,51 @@ translation should be inserted."
 
 
 ;;;; utility functions
+(defun immersive-translate--cache-filename (content)
+  "Generate the full filename based on CONTENT."
+  (let ((hash (sha1 (concat
+                     (prin1-to-string content)
+                     (symbol-name immersive-translate-backend)))))
+    (expand-file-name hash immersive-translate-cache-directory)))
+
+(defun immersive-translate--cache-translation (new-content origin-content)
+  "Save NEW-CONTENT to a file.
+
+The filename is based on ORIGIN-CONTENT."
+  (let ((file (immersive-translate--cache-filename origin-content)))
+    (unless (file-directory-p immersive-translate-cache-directory)
+      (make-directory immersive-translate-cache-directory t))
+    (unless (file-exists-p file)
+      (with-temp-file file
+        (insert new-content)))))
+
+(defun immersive-translate--cache-p (content)
+  "Return t if CONTENT is cached, else nil."
+  (let* ((file (immersive-translate--cache-filename content)))
+    (file-exists-p file)))
+
+(defun immersive-translate--cache-get (content)
+  "Get the cache for CONTENT."
+  (let* ((file (immersive-translate--cache-filename content)))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (buffer-string))))
+
+(defun immersive-translate--add-ov (response)
+  "Add an after-string overlay after point.
+
+The value of after-string is RESPONSE."
+  (let ((ovs (overlays-in (1- (point)) (point)))
+        (new-ov (make-overlay (point) (1+ (point)))))
+    (mapc (lambda (ov)
+            (when (overlay-get ov 'after-string)
+              (delete-overlay ov)))
+          ovs)
+    (overlay-put new-ov
+                 'after-string
+                 response)
+    (push new-ov immersive-translate--translation-overlays)))
+
 (defun immersive-translate-callback (response info)
   "Insert RESPONSE from ChatGPT into the current buffer.
 
@@ -366,7 +416,8 @@ INFO is a plist containing information relevant to this buffer."
   (when-let* (((not (string-empty-p response)))
               (status-str  (plist-get info :status))
               (origin-buffer (plist-get info :buffer))
-              (start-marker (plist-get info :position)))
+              (start-marker (plist-get info :position))
+              (origin-content (plist-get info :content)))
     (with-current-buffer origin-buffer
       (if response
           (progn
@@ -374,16 +425,9 @@ INFO is a plist containing information relevant to this buffer."
             (save-excursion
               (with-current-buffer (marker-buffer start-marker)
                 (goto-char start-marker)
-                (let ((ovs (overlays-in (1- (point)) (point)))
-                      (new-ov (make-overlay (point) (1+ (point)))))
-                  (mapc (lambda (ov)
-                          (when (overlay-get ov 'after-string)
-                            (delete-overlay ov)))
-                        ovs)
-                  (overlay-put new-ov
-                               'after-string
-                               response)
-                  (push new-ov immersive-translate--translation-overlays)))))
+                (immersive-translate--add-ov response)
+                (unless (string= response immersive-translate-failed-message)
+                  (immersive-translate--cache-translation response origin-content)))))
         (message "Response error: (%s) %s"
                  status-str (plist-get info :error))))))
 
@@ -545,11 +589,14 @@ of `immersive-translate-backend' is used."
                              paragraph))
                   (ov t))
         (immersive-translate-end-of-paragraph)
-        (setq ov (make-overlay (1- (point)) (point)))
-        (overlay-put ov
-                     'after-string
-                     immersive-translate-pending-message)
-        (immersive-translate-do-translate content)))))
+        (if (immersive-translate--cache-p content)
+            (let ((translation (immersive-translate--cache-get content)))
+              (immersive-translate--add-ov translation))
+          (setq ov (make-overlay (1- (point)) (point)))
+          (overlay-put ov
+                       'after-string
+                       immersive-translate-pending-message)
+          (immersive-translate-do-translate content))))))
 
 ;;;###autoload
 (defun immersive-translate-clear ()
