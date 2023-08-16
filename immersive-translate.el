@@ -319,7 +319,7 @@ translation should be inserted."
 (defun immersive-translate--info-transform-response (str marker)
   "Format STR at MARKER in `Info-mode'."
   (let* ((fill-column 70)
-         (str (string-trim-right str "[-=]+")))
+         (str (string-trim-right str "[-=*]+")))
     (immersive-translate--format-translation str marker)))
 
 (defun immersive-translate--nov-transform-response (str marker)
