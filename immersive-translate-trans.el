@@ -1,16 +1,16 @@
-;;; immersive-translate-trans.el --- translate-shell backend for immersive-translate -*- lexical-binding: t; -*-
+;;; immersive-translate-trans.el --- Translate-shell backend for immersive-translate -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2023  Eli Qian
 
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
 ;; Url: https://github.com/Elilif/emacs-immersive-translate
 
-;; Version: v0.3.0
+;; Version: 0.3.0
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 
 ;;; Commentary:
-;; 
+;; translate-shell backends
 
 ;;; Code:
 

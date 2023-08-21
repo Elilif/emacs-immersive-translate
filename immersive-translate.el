@@ -1,17 +1,17 @@
-;;; immersive-translate.el --- translate the current buffer immersively -*- lexical-binding: t; -*-
+;;; immersive-translate.el --- Translate the current buffer immersively -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2023  Eli Qian
 
 ;; Author: Eli Qian <eli.q.qian@gmail.com>
 ;; URL: https://github.com/Elilif/emacs-immersive-translate
-;; Keywords: translation
+;; Keywords: convenience, help, translate
 ;; Version: 0.3.0
 ;; Package-Requires: ((emacs "28.2"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;;; Commentary:
-
+;; Translate the current buffer immersively
 
 ;;; Code:
 
@@ -102,7 +102,7 @@ argument."
   :group 'immersive-translate
   :type '(repeat symbol))
 
-(defcustom immersive-translate-cache-directory "~/.emacs.d/var/immersive-translate/"
+(defcustom immersive-translate-cache-directory (file-name-concat user-emacs-directory "var/immersive-translate/")
   "The directory where cached translations will be stored."
   :group 'immersive-translate
   :type 'directory)
