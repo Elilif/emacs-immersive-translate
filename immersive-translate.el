@@ -191,7 +191,7 @@ and \"apikey\" as USER in Chatgpt backend.
       (if (functionp secret)
           (encode-coding-string (funcall secret) 'utf-8)
         secret)
-    (user-error (format "No %s found in the auth source" user))))
+    (user-error "No %s found in the auth source" user)))
 
 
 ;;;; shr
@@ -634,7 +634,7 @@ Translate paragraph under the cursor after Emacs is idle for
       (cancel-timer immersive-translate--timer))
     (immersive-translate--auto-translate-window)
     (setq immersive-translate--timer
-          (run-with-idle-timer immersive-translate-auto-idle 'repeat #'immersive-translate--auto-translate)))
+          (run-with-idle-timer #'immersive-translate-auto-idle 'repeat #'immersive-translate--auto-translate)))
    (t
     (cancel-timer immersive-translate--timer)
     (setq immersive-translate--timer nil
