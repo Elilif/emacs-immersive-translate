@@ -634,7 +634,7 @@ Translate paragraph under the cursor after Emacs is idle for
       (cancel-timer immersive-translate--timer))
     (immersive-translate--auto-translate-window)
     (setq immersive-translate--timer
-          (run-with-idle-timer #'immersive-translate-auto-idle 'repeat #'immersive-translate--auto-translate)))
+          (run-with-idle-timer immersive-translate-auto-idle t #'immersive-translate--auto-translate)))
    (t
     (cancel-timer immersive-translate--timer)
     (setq immersive-translate--timer nil
