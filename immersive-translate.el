@@ -61,6 +61,19 @@ argument."
   :group 'immersive-translate
   :type '(alist :key-type symbol :value-type function))
 
+(defcustom immersive-translate-translation-filter-functions
+  '(immersive-translate--gptel-filter-result)
+  "Abnormal hook for transforming the response from translation backends.
+
+This is useful if you want to format the response in some way,
+such as filling paragraphs, adding annotations or recording
+information in the response like links.
+
+Each function in this hook receives one argument: the response
+string. It should return the transformed string."
+  :group 'immersive-translate
+  :type 'hook)
+
 (defcustom immersive-translate-pending-message "🔄"
   "Text displayed before the translation results are returned."
   :group 'immersive-translate
@@ -106,6 +119,9 @@ argument."
   "The directory where cached translations will be stored."
   :group 'immersive-translate
   :type 'directory)
+
+(defun immersive-translate--gptel-filter-result (str)
+  (replace-regexp-in-string "```" "" str))
 
 (defun immersive-translate--info-code-block-p ()
   "Return non-nil if the current paragraph is a code block."
@@ -312,8 +328,11 @@ translation should be inserted."
      (replace-regexp-in-string
       "^"
       (immersive-translate--get-indent marker)
-      (buffer-substring-no-properties
-       (point-min) (point-max)))
+      (let ((string (buffer-substring-no-properties (point-min) (point-max))))
+        (eval
+         `(thread-last
+            ,string
+            ,@immersive-translate-translation-filter-functions))))
      "\n")))
 
 (defun immersive-translate--info-transform-response (str marker)
