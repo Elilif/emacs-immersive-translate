@@ -447,7 +447,7 @@ INFO is a plist containing information relevant to this buffer."
               (with-current-buffer (marker-buffer start-marker)
                 (goto-char start-marker)
                 (immersive-translate--add-ov response)
-                (unless (string= response immersive-translate-failed-message)
+                (unless (string-match-p immersive-translate-failed-message response)
                   (immersive-translate--cache-translation response origin-content)))))
         (message "Response error: (%s) %s"
                  status-str (plist-get info :error))))))
