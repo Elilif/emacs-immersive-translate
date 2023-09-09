@@ -252,7 +252,8 @@ Advice for ORIG (shr-tag-*)."
     (thread-last
       string
       (replace-regexp-in-string "\n" " ")
-      (replace-regexp-in-string " +" " "))))
+      (replace-regexp-in-string " +" " ")
+      (replace-regexp-in-string "\\*[Nn]ote \\(.*?\n*.*?\\)::" "\"\\1\""))))
 
 (defun immersive-translate--helpful-get-paragraph ()
   "Return the paragraph at point."
