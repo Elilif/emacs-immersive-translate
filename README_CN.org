@@ -84,6 +84,14 @@
   
   当当前段落不需要翻译时，返回 =t= 。此列表中的函数不接受任何参数。
 
+- =immersive-translate-pending-message=
+
+  在返回翻译结果之前显示的文本。
+
+- =immersive-translate-failed-message=
+
+  翻译失败时显示的文本。
+
 
 更多自定义配置见：=M-x customize-group RET immersive-translate RET=
 * API 密钥设置

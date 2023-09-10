@@ -85,6 +85,13 @@ Inspired by [[https://github.com/immersive-translate/immersive-translate][immers
   
   When the current paragraph does not need to be translated, return =t=. These functions in this list do not accept any parameters.
 
+- =immersive-translate-pending-message=
+
+  Text displayed before the translation results are returned.
+
+- =immersive-translate-failed-message=
+
+  Text displayed when translation fails.
 
 See =M-x customize-group RET immersive-translate RET= for details.
 * API setting
