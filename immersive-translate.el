@@ -393,7 +393,10 @@ translation should be inserted."
   (let ((hash (sha1 (concat
                      (prin1-to-string content)
                      (symbol-name immersive-translate-backend)))))
-    (expand-file-name hash immersive-translate-cache-directory)))
+    (expand-file-name (concat (symbol-name immersive-translate-backend)
+                              "-"
+                              hash)
+                      immersive-translate-cache-directory)))
 
 (defun immersive-translate--cache-translation (new-content origin-content)
   "Save NEW-CONTENT to a file.
