@@ -64,6 +64,7 @@ Inspired by [[https://github.com/immersive-translate/immersive-translate][immers
   - chatgpt (https://openai.com/api/)
   - baidu (https://fanyi-api.baidu.com/)
   - translate-shell (https://github.com/soimort/translate-shell)
+  - DeepL (https://www.deepl.com/docs-api/translate-text/translate-text)
 
 - =immersive-translate-auto-idle=
 
@@ -105,6 +106,7 @@ This plugin retrieves the user's key through the built-in =auth-source.el=.
 1. ChatGPT
    
    Assuming your =immersive-translate-chatgpt-host= is "api.openai.com" and the API key is 123456, add the following text to =~/.authinfo=:
+   
   #+begin_example
     machine api.openai.com login apikey password 123456
   #+end_example
@@ -113,8 +115,16 @@ This plugin retrieves the user's key through the built-in =auth-source.el=.
    
    Assuming your =immersive-translate-baidu-appid= is "foobar" and the API key is 123456, add the following text to =~/.authinfo=:
   #+begin_example
-    machine fanyi-api.baidu.com login foobar password 123456
+     machine fanyi-api.baidu.com login foobar password 123456
   #+end_example
+
+3. DeepL
+
+   Assuming your API key is 123456, add the following text to =~/.authinfo=:
+
+   #+begin_example
+     machine deepl.com login apikey password 123456
+   #+end_example
 * Add a new translation backend (PRs welcome!)
 ** Add online translation service
 If you want to add new translation services, you can check the variables =immersive-translate-curl-get-translation-alist= and =immersive-translate-curl-get-args-alist=.

@@ -21,6 +21,7 @@
 (require 'immersive-translate-baidu)
 (require 'immersive-translate-chatgpt)
 (require 'immersive-translate-trans)
+(require 'immersive-translate-deepl)
 
 
 
@@ -40,7 +41,8 @@
 The current options are
 - chatgpt
 - baidu
-- trans"
+- trans
+- deepl"
   :group 'immersive-translate
   :type '(choice
           (const :tag "ChatGPT" chatgpt)
@@ -50,7 +52,8 @@ The current options are
 (defcustom immersive-translate-backend-alist
   '((baidu . immersive-translate-baidu-translate)
     (chatgpt . immersive-translate-chatgpt-translate)
-    (trans . immersive-translate-trans-translate))
+    (trans . immersive-translate-trans-translate)
+    (deepl . immersive-translate-deepl-translate))
   "Alist of functions to do the translation job.
 
 Each element looks like (BACKEND . FUNCTION);

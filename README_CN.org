@@ -62,6 +62,7 @@
   - chatgpt (https://openai.com/api/)
   - baidu (https://fanyi-api.baidu.com/)
   - translate-shell (https://github.com/soimort/translate-shell)
+  - DeepL (https://www.deepl.com/docs-api/translate-text/translate-text)
 
 - =immersive-translate-auto-idle=
 
@@ -118,6 +119,15 @@
   #+begin_example
   machine fanyi-api.baidu.com login foobar password 123456
   #+end_example
+
+3. DeepL
+
+   假设您的 API 密钥 123456, 则在 =~/.authinfo= 中添加如下文本：
+
+   #+begin_example
+     machine deepl.com login apikey password 123456
+   #+end_example
+
 * 添加新的翻译后端 (欢迎 PR!)
 ** 添加在线翻译服务
 如果想要添加新的翻译服务，可以查看变量
