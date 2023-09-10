@@ -50,7 +50,9 @@ Inspired by [[https://github.com/immersive-translate/immersive-translate][immers
 
   Translate, when enabled, automatically translate the visible portion of the current window.
 
-- =immersive-translate-abort=
+  *Note*: Some translation services (e.g. baidu translation) has QPS(Queries Per Second) limits, so it is recommended to use =immersive-translate-auto-mode= instead of =immersive-translate-buffer= while using these services.
+
+  - =immersive-translate-abort=
   
   Stop all ongoing translation processes in the current buffer.
 * Customization

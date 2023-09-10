@@ -47,6 +47,9 @@
 
   开启后，自动翻译当前窗口可见部分的内容。
 
+  *注意*: 一些翻译服务（如百度翻译）有每秒查询限制（QPS），因此建议在使用这些服务
+  时使用 =immersive-translate-auto-mode= 而不是 =immersive-translate-buffer= 。
+
 - =immersive-translate-abort=
   
   停止当前 buffer 所有的正在进行的翻译进程。
