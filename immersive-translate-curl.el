@@ -133,14 +133,21 @@ PROCESS and _STATUS are process parameters."
         (plist-put proc-info :status http-msg)
         (when error (plist-put proc-info :error error))
         (when (and (plist-get proc-info :retry)
-                   (string-empty-p response))
-          (setq response immersive-translate-failed-message))
+                   (or (string-empty-p response)
+                       (get-text-property 0 'error response)))
+          (setq response (concat
+                          response
+                          " "
+                          immersive-translate-failed-message))
+          (funcall proc-callback response proc-info))
         (when (and proc-content
-                   (string-empty-p response)
+                   (or (string-empty-p response)
+                       (get-text-property 0 'error response))
                    (not (plist-get proc-info :retry)))
           (plist-put proc-info :retry t)
           (immersive-translate-curl-do proc-service proc-info proc-callback))
-        (funcall proc-callback response proc-info)))
+        (unless (plist-get proc-info :retry)
+          (funcall proc-callback response proc-info))))
     (setf (alist-get process immersive-translate--process-alist nil 'remove) nil)
     (kill-buffer proc-buf)))
 

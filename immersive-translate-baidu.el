@@ -100,7 +100,12 @@ identifier."
 
 (defun immersive-translate-curl-baidu-get-translation (response)
   "Get the translated text in RESPONSE returned by BAIDU."
-  (map-nested-elt response '(:trans_result 0 :dst)))
+  (or (map-nested-elt response '(:trans_result 0 :dst))
+      (let ((result (concat
+                     (plist-get response :error_code)
+                     ": "
+                     (plist-get response :error_msg))))
+        (propertize result 'error t))))
 
 (add-to-list 'immersive-translate-curl-get-translation-alist
              '(baidu . immersive-translate-curl-baidu-get-translation))
