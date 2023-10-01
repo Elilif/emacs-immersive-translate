@@ -31,6 +31,14 @@ for more defails."
   :group 'immersive-translate-deepl
   :type 'string)
 
+(defcustom immersive-translate-deepl-source-language "EN"
+  "The source language.
+
+See https://www.deepl.com/docs-api/translate-text/translate-text
+for more defails."
+  :group 'immersive-translate-deepl
+  :type 'string)
+
 (defcustom immersive-translate-deepl-api "https://api-free.deepl.com/v2/translate"
   "DeepL API.
 
@@ -44,6 +52,7 @@ for more defails."
 
 Argument PROMPTS are for sending to DeepL."
   `(("text" . (,content))
+    ("source_lang" . ,immersive-translate-deepl-source-language)
     ("target_lang" . ,immersive-translate-deepl-target-language)))
 
 (defun immersive-translate-deepl-get-args (content token)
